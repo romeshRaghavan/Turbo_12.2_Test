@@ -3729,7 +3729,7 @@ function setPerUnitDetailsForEdit(transaction, results) {
             }
         }
         if (perUnitDetailsJSON.isUnitReqd == 'Y') {
-            document.getElementById("expAmt").value = "";
+            //document.getElementById("expAmt").value = "";
             if (perUnitDetailsJSON.expFixedOrVariable == 'V') {
                 flagForUnitEnable = true;
                 if (perUnitDetailsJSON.expenseIsfromAndToReqd == 'Y' && window.localStorage.getItem("MobileMapRole") == 'true') {
