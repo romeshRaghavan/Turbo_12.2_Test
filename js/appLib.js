@@ -7891,3 +7891,119 @@ function showHideMonthlyRestrictedDropDown(accountHeadId) {
         }
     }
 }
+
+function populateStartEndDate(showHideDropDown){
+
+    var enteredMonth = convertMonth(showHideDropDown.value);
+    var currentDate = new Date();
+    var currentMonth = currentDate.getMonth()+ 1;
+    var currentYear = currentDate.getFullYear(); 
+    if(enteredMonth > currentDate.getMonth()){
+        currentYear = currentYear - 1;
+    }
+   
+    var selectedMonth = showHideDropDown.value.substring(0,3);
+    //start
+    var selectedMonthNumber= +enteredMonth + 1;
+    var today = new Date();
+    var currentMonth = String(today.getMonth() + 1).padStart(2, '0');
+    var currentYear = today.getFullYear();
+    var currentMonthArray;
+    if(currentMonth == 1){
+      currentMonthArray=[1,12,11,10];
+    }else if(currentMonth == 2){
+      currentMonthArray=[2,1,12,11];
+    }else if(currentMonth == 3){
+      currentMonthArray=[3,2,1,12];
+    }else{
+      currentMonthArray=[(currentMonth-0),(currentMonth-1),(currentMonth-2),(currentMonth-3)];
+    }
+    
+    var flag=currentMonthArray.includes(selectedMonthNumber);
+    if(flag == false){
+        $(function() {
+            $('#expDate').datepicker('destroy');
+            var currMonth;
+            var currDate;
+            var currYear;
+            var date = new Date();
+            currMonth = date.getMonth();
+            currDate = date.getDate();
+            currYear = date.getFullYear();
+            $('#expDate').datepicker({
+                maxDate: new Date(currYear, currMonth, currDate)
+            });
+            var month = date.getMonth();
+            date.setMonth(month);
+            $('#expDate').datepicker("setDate", date);
+        });
+        document.getElementById('showHideDropDown').value = "";
+        alert("User can raise voucher only for past 3 months from current month.");  
+    }else{
+
+        $(function() {
+            var date = new Date();
+            var enteredMonth = convertMonth(showHideDropDown.value);
+            var day = daysInMonth(enteredMonth,currentYear);
+
+
+            $('#expDate').datepicker('destroy');
+            $('#expDate').datepicker({
+                minDate: new Date(currentYear, enteredMonth, '01'),
+                maxDate: new Date(currentYear, enteredMonth, day)
+            });
+            date.setMonth(enteredMonth);
+            $("#expDate").datepicker("setDate", date);
+
+        });
+    }
+
+}
+
+function convertMonth(month){
+        var monthVal = ""
+
+        switch(month){
+            case 'January':
+                monthVal = '0';
+                break;
+            case 'February':
+                monthVal = '1';
+                break;
+            case 'March':
+                monthVal = '2';
+                break;
+            case 'April':
+                monthVal = '3';
+                break;
+            case 'May':
+                monthVal = '4';
+                break;
+            case 'June':
+                monthVal = '5';
+                break;
+            case 'July':
+                monthVal = '6';
+                break;
+            case 'August':
+                monthVal = '7';
+                break;
+            case 'September':
+                monthVal = '8';
+                break;
+            case 'October':
+                monthVal = '9';
+                break;
+            case 'November':
+                monthVal = '10';
+                break;
+            case 'December':
+                monthVal = '11';
+                break;
+        }
+        return monthVal;
+    }
+
+    function daysInMonth(iMonth, iYear){
+        return 32 - new Date(iYear, iMonth, 32).getDate();
+    }
