@@ -65,7 +65,6 @@
              appPageHistory.pop();
              var len = appPageHistory.length;
              var pg = appPageHistory[len - 1];
-             //console.log("pg : "+pg);
 
                  if (pg == "app/pages/addAnExpense.html" || pg == "app/pages/addTravelSettlement.html") {
 
@@ -167,12 +166,12 @@ function arrayRemove(arr, value) {
          t.executeSql("CREATE TABLE IF NOT EXISTS walletMst (walletId INTEGER PRIMARY KEY ASC AUTOINCREMENT, walletAttachment  BLOB)");
          t.executeSql("CREATE TABLE IF NOT EXISTS travelModeMst (travelModeId INTEGER PRIMARY KEY ASC, travelModeName TEXT)");
          t.executeSql("CREATE TABLE IF NOT EXISTS travelCategoryMst (travelCategoryId INTEGER PRIMARY KEY ASC, travelCategoryName TEXT,travelModeId INTEGER)");
-         t.executeSql("CREATE TABLE IF NOT EXISTS cityTownMst (cityTownId INTEGER PRIMARY KEY ASC, cityTownName TEXT)");
+         t.executeSql("CREATE TABLE IF NOT EXISTS cityTownMst (cityTownId INTEGER PRIMARY KEY ASC, cityTownName TEXT, cityTownTypeId INTEGER)");
          t.executeSql("CREATE TABLE IF NOT EXISTS travelTypeMst (travelTypeId INTEGER PRIMARY KEY ASC, travelTypeName TEXT)");
          t.executeSql("CREATE TABLE IF NOT EXISTS travelAccountHeadMst (id INTEGER PRIMARY KEY ASC,accHeadId INTEGER, accHeadName TEXT, processId INTEGER)");
          t.executeSql("CREATE TABLE IF NOT EXISTS travelExpenseNameMst (id INTEGER PRIMARY KEY ASC,expenseNameId INTEGER, expenseName TEXT, isModeCategory char(1),accountCodeId INTEGER,accHeadId INTEGER REFERENCES travelAccountHeadMst(accHeadId))");
-         t.executeSql("CREATE TABLE IF NOT EXISTS travelSettleExpDetails (tsExpId INTEGER PRIMARY KEY ASC,travelRequestId INTEGER, accHeadId INTEGER REFERENCES travelAccountHeadMst(accHeadId), expNameId INTEGER REFERENCES travelExpenseNameMst(expenseNameId),expDate DATE,expNarration TEXT, expUnit INTEGER, expAmt Double, currencyId INTEGER REFERENCES currencyMst(currencyId),travelModeId INTEGER REFERENCES travelModeMst(travelModeId), travelCategoryId INTEGER REFERENCES travelCategoryMst(travelCategoryId), cityTownId INTEGER REFERENCES cityTownMst(cityTownId),tsExpAttachment BLOB)");
-         t.executeSql("CREATE TABLE IF NOT EXISTS travelRequestDetails (travelRequestId INTEGER PRIMARY KEY ASC, travelRequestNo TEXT,title TEXT, accountHeadId INTEGER,travelStartDate DATE,travelEndDate DATE,travelDomOrInter CHAR(1), advanceRequested TEXT,advanceAmount INTEGER)");
+         t.executeSql("CREATE TABLE IF NOT EXISTS travelSettleExpDetails (tsExpId INTEGER PRIMARY KEY ASC,travelRequestId INTEGER, accHeadId INTEGER REFERENCES travelAccountHeadMst(accHeadId), expNameId INTEGER REFERENCES travelExpenseNameMst(expenseNameId),expDate DATE,expNarration TEXT, expUnit INTEGER, expAmt Double, currencyId INTEGER REFERENCES currencyMst(currencyId),travelModeId INTEGER REFERENCES travelModeMst(travelModeId), travelCategoryId INTEGER REFERENCES travelCategoryMst(travelCategoryId), cityTownId INTEGER REFERENCES cityTownMst(cityTownId),tsExpAttachment BLOB,isEntitlementExceeded TEXT)");
+         t.executeSql("CREATE TABLE IF NOT EXISTS travelRequestDetails (travelRequestId INTEGER PRIMARY KEY ASC, travelRequestNo TEXT,title TEXT, accountHeadId INTEGER,travelStartDate DATE,travelEndDate DATE,travelDomOrInter CHAR(1), advanceRequested TEXT,advanceAmount INTEGER,travelSelfAmount INTEGER)");
          /*         t.executeSql("CREATE TABLE IF NOT EXISTS travelRequestDetails (travelRequestId INTEGER PRIMARY KEY ASC, travelRequestNo TEXT,title TEXT, accountHeadId INTEGER,travelStartDate DATE,travelEndDate DATE,travelDomOrInter CHAR(1))");
           */
          t.executeSql("CREATE TABLE IF NOT EXISTS accountHeadEAMst (accountHeadId INTEGER PRIMARY KEY ASC, accHeadName TEXT)");
@@ -187,8 +186,9 @@ function arrayRemove(arr, value) {
 
         // ****************     Approval Table      ***************** //
 
-         t.executeSql("CREATE TABLE IF NOT EXISTS BEHeader ( busExpHeaderId INTEGER ,busExpNumber TEXT,accHeadId INTEGER REFERENCES accountHeadMst(accHeadId),accHeadDesc TEXT,voucherDate DATE,startDate DATE,endDate DATE,currencyId INTEGER REFERENCES currencyMst(currencyId),currencyName TEXT,editorTotalAmt DOUBLE,vocherStatus TEXT, currentOwnerId INTEGER, currentOwnerName TEXT,  createdById INTEGER, creatorName TEXT,rejectionComments TEXT)");
+         t.executeSql("CREATE TABLE IF NOT EXISTS BEHeader ( busExpHeaderId INTEGER ,busExpNumber TEXT,accHeadId INTEGER REFERENCES accountHeadMst(accHeadId),accHeadDesc TEXT,voucherDate DATE,startDate DATE,endDate DATE,currencyId INTEGER REFERENCES currencyMst(currencyId),currencyName TEXT,editorTotalAmt DOUBLE,vocherStatus TEXT, currentOwnerId INTEGER, currentOwnerName TEXT,  createdById INTEGER, creatorName TEXT,rejectionComments TEXT,query TEXT,queryId INTEGER,queryAns TEXT , workflowToBeFollowed TEXT)");
          t.executeSql("CREATE TABLE IF NOT EXISTS BEDetails (busExpDetailId INTEGER ,busExpHeaId INTEGER , expNameId INTEGER REFERENCES expNameMst(expNameId), expName  TEXT,expDate DATE,currencyId INTEGER REFERENCES currencyMst(currencyId),currencyName TEXT, perUnit INTEGER,fromLocation TEXT,toLocation TEXT,convertedAmt DOUBLE ,expAttachment BLOB)");
+         t.executeSql("CREATE TABLE IF NOT EXISTS TravelHeader (headerId INTEGER ,voucherNumber TEXT,accHeadId INTEGER REFERENCES accountHeadMst(accHeadId),accHeadDesc TEXT,voucherDate DATE,startDate DATE,endDate DATE,currencyId INTEGER REFERENCES currencyMst(currencyId),currencyName TEXT,editorTotalAmt DOUBLE,vocherStatus TEXT, currentOwnerId INTEGER, currentOwnerName TEXT,  createdById INTEGER, creatorName TEXT,rejectionComments TEXT, iternaryType TEXT , toLocation TEXT, fromLocation TEXT, travelType TEXT, travelTitle TEXT, query TEXT,queryId INTEGER,queryAns TEXT, workflowToBeFollowed TEXT)");
 
      });
  } else {
@@ -279,6 +279,10 @@ function arrayRemove(arr, value) {
                      document.getElementById("syncSuccessMsg").innerHTML = "Expenses added successfully.";
                      j('#syncSuccessMsg').hide().fadeIn('slow').delay(300).fadeOut('slow');
                      resetImageData();
+
+                      $('#expDate').datepicker('destroy');
+                     delayMstForBE();
+
                      //createBusinessExp();
                  } else {
                      viewBusinessExp();
@@ -294,8 +298,90 @@ function arrayRemove(arr, value) {
      }
  }
 
+ function delayMstForBE(){
+
+  var processId = '1';
+
+  if (mydb) {
+          mydb.transaction(function(t) {
+           t.executeSql("select * from delayMst where processId=" + processId, [], fetchDelayMstResultForBE);
+           });
+       } else {
+         alert(window.lang.translate('Database not found, your browser does not support web sql!'));
+       }    
+}
+
+
+function fetchDelayMstResultForBE(transaction, results) {
+  var noOfDaysBE;
+  var restrictionStatus;
+  var status;
+  var i;
+  for (i = 0; i < results.rows.length; i++) {
+   var row = results.rows.item(i);
+   noOfDaysBE = row.noOfDays;
+   restrictionStatus = row.restrictionStatus;
+   status = row.status;
+ }
+ if(restrictionStatus == 'Y' &&  status == 'Y' && !noOfDaysBE == ''){
+  var currentMonth;
+  var currentDate;
+  var currentYear;
+  $(function() {
+    var date = new Date();
+    currentMonth = date.getMonth();
+    currentDate = date.getDate();
+    currentYear = date.getFullYear();
+    $('#expDate').datepicker({
+      minDate: new Date(currentYear, currentMonth, currentDate-noOfDaysBE),
+      maxDate: new Date(currentYear, currentMonth, currentDate)
+    });
+  });
+  var expdate = document.getElementById("expDate").value;
+  if(expdate == ""){
+    currentMonth = currentMonth + 1;
+    if (currentDate < 10) {
+     currentDate = '0' + currentDate
+   }
+   if (currentMonth < 10) {
+     currentMonth = '0' + currentMonth
+   }
+   document.getElementById("expDate").value = currentMonth + "/" + currentDate + "/" + currentYear;
+ }else{
+  document.getElementById("expDate").value = expdate;
+}
+
+}else{
+  var currentMonth;
+  var currentDate;
+  var currentYear;
+  $(function() {
+    var date = new Date();
+    currentMonth = date.getMonth();
+    currentDate = date.getDate();
+    currentYear = date.getFullYear();
+    $('#expDate').datepicker({
+      maxDate: new Date(currentYear, currentMonth, currentDate)
+    });
+  });
+  var expdate = document.getElementById("expDate").value;
+  if(expdate == ""){
+    currentMonth = currentMonth + 1;
+    if (currentDate < 10) {
+     currentDate = '0' + currentDate
+   }
+   if (currentMonth < 10) {
+     currentMonth = '0' + currentMonth
+   }
+   document.getElementById("expDate").value = currentMonth + "/" + currentDate + "/" + currentYear;
+ }else{
+  document.getElementById("expDate").value = expdate;
+   }
+  }
+}
+
  function saveTravelSettleDetails(status) {
-     exceptionStatus = 'N';
+    // exceptionStatus = 'N';
      exceptionMessage = '';
 
      if (mydb) {
@@ -317,6 +403,7 @@ function arrayRemove(arr, value) {
          var cityTown_id;
          var cityTown_val;
          var file;
+         
          if (j("#travelRequestName").select2('data') != null) {
              travelRequestId = j("#travelRequestName").select2('data').id;
              travelRequestNo = j("#travelRequestName").select2('data').name;
@@ -373,8 +460,9 @@ function arrayRemove(arr, value) {
              if (file == undefined) {
                  file = "";
              }
+            
              mydb.transaction(function(t) {
-                 t.executeSql("INSERT INTO travelSettleExpDetails  (expDate, travelRequestId,expNameId,expNarration, expUnit,expAmt,currencyId,travelModeId,travelCategoryId,cityTownId,tsExpAttachment) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)", [exp_date, travelRequestId, exp_name_id, exp_narration, exp_unit, exp_amt, currency_id, travelMode_id, travelCategory_id, cityTown_id, file]);
+                 t.executeSql("INSERT INTO travelSettleExpDetails  (expDate, travelRequestId,expNameId,expNarration, expUnit,expAmt,currencyId,travelModeId,travelCategoryId,cityTownId,tsExpAttachment,isEntitlementExceeded) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)", [exp_date, travelRequestId, exp_name_id, exp_narration, exp_unit, exp_amt, currency_id, travelMode_id, travelCategory_id, cityTown_id, file,exceptionStatus]);
 
                  if (status == "0") {
                      document.getElementById('expDate').value = "";
@@ -610,7 +698,8 @@ function arrayRemove(arr, value) {
 
      mytable = j('<table></table>').attr({
          id: "source",
-         class: ["table", "table-striped", "table-bordered"].join(' ')
+         class: ["table", "table-striped", "table-bordered" ],
+         style:["overflow-x: auto;display: inline-table;"].join(' ')
      });
 
      var rowThead = j("<thead></thead>").appendTo(mytable);
@@ -619,16 +708,17 @@ function arrayRemove(arr, value) {
      }).appendTo(rowThead);
 
      j('<th lang=\'en\'></th>').text("Date").appendTo(rowTh);
+     j('<th lang=\'en\'></th>').text("TR").appendTo(rowTh);
      j('<th lang=\'en\'></th>').text("Expense Name").appendTo(rowTh);
      j('<th lang=\'en\'></th>').text("Amt").appendTo(rowTh);
-     j('<th lang=\'en\'></th>').text("cityTown").appendTo(rowTh);
+     j('<th lang=\'en\'></th>').text("CityTown").appendTo(rowTh);
      j('<th lang=\'en\'></th>').text("Narration").appendTo(rowTh);
 
      var cols = new Number(4);
 
      mydb.transaction(function(t) {
 
-         t.executeSql('select * from travelSettleExpDetails inner join cityTownMst on cityTownMst.cityTownId = travelSettleExpDetails.cityTownId inner join currencyMst on travelSettleExpDetails.currencyId = currencyMst.currencyId inner join travelExpenseNameMst on travelExpenseNameMst.id = travelSettleExpDetails.expNameId;', [],
+         t.executeSql('select * from travelSettleExpDetails inner join cityTownMst on cityTownMst.cityTownId = travelSettleExpDetails.cityTownId inner join currencyMst on travelSettleExpDetails.currencyId = currencyMst.currencyId inner join travelExpenseNameMst on travelExpenseNameMst.id = travelSettleExpDetails.expNameId  inner join travelRequestDetails on travelRequestDetails.travelRequestId = travelSettleExpDetails.travelRequestId;', [],
              function(transaction, result) {
 
                  if (result != null && result.rows != null) {
@@ -637,7 +727,24 @@ function arrayRemove(arr, value) {
 
                          var row = result.rows.item(i);
 
-                         var newDateFormat = reverseConvertDate(row.expDate.substring(0, 2)) + "-" + row.expDate.substring(3, 5) + " " + row.expDate.substring(6, 10);
+                        var newDateFormat = getDateForDetailLine(row.expDate);
+                        var length = row.travelRequestNo.length;
+                        var trNo = (row.travelRequestNo).substr(length-2);
+
+                        var narration = row.expNarration;
+
+                        if(narration > '8'){
+                           narration = narration.substring(0,5)+"..";
+                        }
+
+                        var attachmentLength = row.tsExpAttachment.length;
+                        //attachmentLength = attachmentLength+1;
+
+                        var cityTown = row.cityTownName;
+
+                        if(cityTown > '9'){
+                           cityTown = cityTown.substring(0,6)+"..";
+                        }
 
                          var rowss = j('<tr></tr>').attr({
                              class: ["test"].join(' ')
@@ -647,6 +754,10 @@ function arrayRemove(arr, value) {
                              class: ["expDate"].join(' ')
                          }).html('<p style="color: black;">' + newDateFormat + '</P>').appendTo(rowss);
                          j('<td></td>').attr({
+                             class: ["trNo"].join(' ')
+                         }).html('<p style="color: black;">' + trNo + '</P>').appendTo(rowss);
+                         
+                         j('<td></td>').attr({
                              class: ["expenseName"].join(' ')
                          }).html('<p style="color: black;">' + row.expenseName + '</P>').appendTo(rowss).appendTo(rowss);
 
@@ -655,16 +766,16 @@ function arrayRemove(arr, value) {
                          }).html('<p style="color: black;">' + row.expAmt + ' ' + row.currencyName + '</P>').appendTo(rowss);
                          j('<td></td>').attr({
                              class: ["cityTownName"].join(' ')
-                         }).html('<p style="color: black;">' + row.cityTownName + '</P>').appendTo(rowss);
+                         }).html('<p style="color: black;">' + cityTown + '</P>').appendTo(rowss);
 
-                         if (row.tsExpAttachment.length == 0) {
+                         if (attachmentLength == 0) {
                              j('<td></td>').attr({
                                  class: ["expNarration"].join(' ')
-                             }).html('<p style="color: black;">' + row.expNarration + '</P>').appendTo(rowss);
+                             }).html('<p style="color: black;">' + narration + '</P>').appendTo(rowss);
                          } else {
                              j('<td></td>').attr({
                                  class: ["expNarration"].join(' ')
-                             }).html('<p style="color: black;">' + row.expNarration + '</P><img src="images/attach.png" width="25px" height="25px">').appendTo(rowss);
+                             }).html('<p style="color: black;">' + narration + '</P><img src="images/attach.png" width="25px" height="25px">').appendTo(rowss);
                          }
                          j('<td></td>').attr({
                              class: ["expDate1", "displayNone"].join(' ')
@@ -714,6 +825,9 @@ function arrayRemove(arr, value) {
                          j('<td></td>').attr({
                              class: ["accountCodeId", "displayNone"].join(' ')
                          }).text(row.accountCodeId).appendTo(rowss);
+                         j('<td></td>').attr({
+                             class: ["isEntitlementExceeded", "displayNone"].join(' ')
+                         }).text(row.isEntitlementExceeded).appendTo(rowss);
                      }
 
                      j("#source tr").click(function() {
@@ -721,6 +835,7 @@ function arrayRemove(arr, value) {
                          if (j(this).hasClass("selected")) {
                              var headerBackBtn = defaultPagePath + 'headerPageForTSOperation.html';
                              j(this).removeClass('selected');
+                             populateTSAmount();
                              j('#mainHeader').load(headerBackBtn);
                          } else {
                              if (j(this).text() == 'DateExpense NameAmtcityTownNarration') {
@@ -728,6 +843,7 @@ function arrayRemove(arr, value) {
                              } else {
                                  j('#mainHeader').load(headerOprationBtn);
                                  j(this).addClass('selected');
+                                 populateTSAmount();
                              }
                          }
                      });
@@ -1077,7 +1193,8 @@ function arrayRemove(arr, value) {
                                  stateArr = cityTownJSONArray[i];
                                  var citytown_id = stateArr.CityTownId;
                                  var citytown_name = stateArr.CityTownName;
-                                 t.executeSql("INSERT INTO cityTownMst (cityTownId,cityTownName) VALUES (?, ?)", [citytown_id, citytown_name]);
+                                 var cityTownTypeId = stateArr.CityTownTypeId;
+                                 t.executeSql("INSERT INTO cityTownMst (cityTownId,cityTownName,cityTownTypeId) VALUES (?, ?, ?)", [citytown_id, citytown_name, cityTownTypeId]);
 
                              }
                          }
@@ -1336,7 +1453,7 @@ function arrayRemove(arr, value) {
  }
 
  function setUserSessionDetails(val, userJSON) {
-     //alert("buss : "+val.mobileEC);
+     window.localStorage.setItem("TravelDesk", val.travelDesk);
      window.localStorage.setItem("TrRole", val.TrRole);
      window.localStorage.setItem("EmployeeId", val.EmpId);
      window.localStorage.setItem("FirstName", val.FirstName);
@@ -1346,7 +1463,13 @@ function arrayRemove(arr, value) {
      window.localStorage.setItem("UnitId", val.UnitId);
      window.localStorage.setItem("MapProvider", val.MapProvider);
 
-     //For Mobile Google Map Role Start
+     if (!val.hasOwnProperty('APPLICATION_VERSION')) {
+         window.localStorage.setItem("APPLICATION_VERSION", false);
+     } else {
+         window.localStorage.setItem("APPLICATION_VERSION", val.APPLICATION_VERSION);
+         var versionNumber = parseFloat(val.APPLICATION_VERSION.match(/[\d\.]+/));
+         window.localStorage.setItem("versionNumber", versionNumber);
+     }     //For Mobile Google Map Role Start
      //End
      if (!val.hasOwnProperty('MobileMapRole')) {
          window.localStorage.setItem("MobileMapRole", false);
@@ -1445,6 +1568,17 @@ function arrayRemove(arr, value) {
          t.executeSql("delete from profileMst");
          
 
+     });
+
+ }
+
+  function dropDetailTables() {
+
+     mydb.transaction(function(t) {
+
+         t.executeSql("delete from businessExpDetails");
+         t.executeSql("delete from walletMst");
+         t.executeSql("delete from travelSettleExpDetails");      
      });
 
  }
@@ -1743,8 +1877,9 @@ function arrayRemove(arr, value) {
                                  var tr_DomOrInter = stateArr.TravelDoMOrInter;
                                  var adv_Requested = stateArr.AdvanceRequested;
                                  var adv_Requested_Amount = stateArr.AdvanceAmount;
+                                 var travelSelfAmount = stateArr.TravelSelfAmount;
 
-                                 t.executeSql("INSERT INTO travelRequestDetails (travelRequestId,travelRequestNo,title,accountHeadId,travelEndDate,travelStartDate,travelDomOrInter,advanceRequested,advanceAmount) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)", [travel_request_id, travel_request_no, title, ac_head_id, tr_end_date, tr_start_date, tr_DomOrInter, adv_Requested, adv_Requested_Amount]);
+                                 t.executeSql("INSERT INTO travelRequestDetails (travelRequestId,travelRequestNo,title,accountHeadId,travelEndDate,travelStartDate,travelDomOrInter,advanceRequested,advanceAmount,travelSelfAmount) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)", [travel_request_id, travel_request_no, title, ac_head_id, tr_end_date, tr_start_date, tr_DomOrInter, adv_Requested, adv_Requested_Amount, travelSelfAmount]);
 
                              }
                          }
@@ -2661,7 +2796,8 @@ function arrayRemove(arr, value) {
      j('#source').remove();
      mytable = j('<table></table>').attr({
          id: "source",
-         class: ["table", "table-striped", "table-bordered"].join(' ')
+         class: ["table", "table-striped", "table-bordered"],
+         style:["overflow-x: auto;display: inline-table;"].join(' ')
      });
 
      var rowThead = j("<thead></thead>").appendTo(mytable);
@@ -2670,16 +2806,17 @@ function arrayRemove(arr, value) {
      }).appendTo(rowThead);
 
      j('<th lang=\'en\'></th>').text("Date").appendTo(rowTh);
+     j('<th lang=\'en\'></th>').text("TR").appendTo(rowTh);
      j('<th lang=\'en\'></th>').text("Expense Name").appendTo(rowTh);
      j('<th lang=\'en\'></th>').text("Amt").appendTo(rowTh);
-     j('<th lang=\'en\'></th>').text("cityTown").appendTo(rowTh);
+     j('<th lang=\'en\'></th>').text("CityTown").appendTo(rowTh);
      j('<th lang=\'en\'></th>').text("Narration").appendTo(rowTh);
 
      var cols = new Number(4);
 
      mydb.transaction(function(t) {
 
-         t.executeSql('select * from travelSettleExpDetails inner join cityTownMst on cityTownMst.cityTownId = travelSettleExpDetails.cityTownId inner join currencyMst on travelSettleExpDetails.currencyId = currencyMst.currencyId inner join travelExpenseNameMst on travelExpenseNameMst.id = travelSettleExpDetails.expNameId;', [],
+         t.executeSql('select * from travelSettleExpDetails inner join cityTownMst on cityTownMst.cityTownId = travelSettleExpDetails.cityTownId inner join currencyMst on travelSettleExpDetails.currencyId = currencyMst.currencyId inner join travelExpenseNameMst on travelExpenseNameMst.id = travelSettleExpDetails.expNameId inner join travelRequestDetails on travelRequestDetails.travelRequestId = travelSettleExpDetails.travelRequestId;', [],
              function(transaction, result) {
 
                  if (result != null && result.rows != null) {
@@ -2688,7 +2825,24 @@ function arrayRemove(arr, value) {
 
                          var row = result.rows.item(i);
 
-                         var newDateFormat = reverseConvertDate(row.expDate.substring(0, 2)) + "-" + row.expDate.substring(3, 5) + " " + row.expDate.substring(6, 10);
+                        var narration = row.expNarration;
+
+                        if(narration > '8'){
+                           narration = narration.substring(0,5)+"..";
+                        }
+
+                        var attachmentLength = row.tsExpAttachment.length;
+                        //attachmentLength = attachmentLength+1;
+
+                        var newDateFormat = getDateForDetailLine(row.expDate);
+                        var length = row.travelRequestNo.length;
+                        var trNo = (row.travelRequestNo).substr(length-2);
+
+                        var cityTown = row.cityTownName;
+
+                        if(cityTown > '9'){
+                           cityTown = cityTown.substring(0,6)+"..";
+                        }
 
                          var rowss = j('<tr></tr>').attr({
                              class: ["test"].join(' ')
@@ -2698,6 +2852,9 @@ function arrayRemove(arr, value) {
                              class: ["expDate"].join(' ')
                          }).html('<p style="color: black;">' + newDateFormat + '</P>').appendTo(rowss);
                          j('<td></td>').attr({
+                             class: ["trNo"].join(' ')
+                         }).html('<p style="color: black;">' + trNo + '</P>').appendTo(rowss);
+                         j('<td></td>').attr({
                              class: ["expenseName"].join(' ')
                          }).html('<p style="color: black;">' + row.expenseName + '</P>').appendTo(rowss).appendTo(rowss);
                          j('<td></td>').attr({
@@ -2705,16 +2862,16 @@ function arrayRemove(arr, value) {
                          }).html('<p>' + row.expAmt + ' ' + row.currencyName + '</P>').appendTo(rowss);
                          j('<td></td>').attr({
                              class: ["cityTownName"].join(' ')
-                         }).html('<p style="color: black;">' + row.cityTownName + '</P>').appendTo(rowss);
+                         }).html('<p style="color: black;">' + cityTown + '</P>').appendTo(rowss);
 
-                         if (row.tsExpAttachment.length == 0) {
+                         if (attachmentLength == 0) {
                              j('<td></td>').attr({
                                  class: ["expNarration"].join(' ')
-                             }).html('<p>' + row.expNarration + '</P>').appendTo(rowss);
+                             }).html('<p>' + narration +'</P>').appendTo(rowss);
                          } else {
                              j('<td></td>').attr({
                                  class: ["expNarration"].join(' ')
-                             }).html('<p>' + row.expNarration + '</P><img src="images/attach.png" width="25px" height="25px">').appendTo(rowss);
+                             }).html('<p>' + narration +'</P><img src="images/attach.png" width="25px" height="25px">').appendTo(rowss);
                          }
                          j('<td></td>').attr({
                              class: ["expDate1", "displayNone"].join(' ')
@@ -2764,6 +2921,9 @@ function arrayRemove(arr, value) {
                          j('<td></td>').attr({
                              class: ["accountCodeId", "displayNone"].join(' ')
                          }).text(row.accountCodeId).appendTo(rowss);
+                         j('<td></td>').attr({
+                             class: ["isEntitlementExceeded", "displayNone"].join(' ')
+                         }).text(row.isEntitlementExceeded).appendTo(rowss);
                      }
 
                      j("#source tr").click(function() {
@@ -2771,6 +2931,7 @@ function arrayRemove(arr, value) {
                          if (j(this).hasClass("selected")) {
                              var headerBackBtn = defaultPagePath + 'headerPageForTSOperation.html';
                              j(this).removeClass('selected');
+                              populateTSAmount();
                              j('#mainHeader').load(headerBackBtn);
                          } else {
                              if (j(this).text() == 'DateExpense NameAmtcityTownNarration') {
@@ -2778,6 +2939,7 @@ function arrayRemove(arr, value) {
                              } else {
                                  j('#mainHeader').load(headerOprationBtn);
                                  j(this).addClass('selected');
+                                  populateTSAmount();
                              }
                          }
                      });
@@ -3984,16 +4146,14 @@ function arrayRemove(arr, value) {
          jsonFindExpNameHead["ExpenseName"] = row.expName;
          jsonExpNameArr.push(jsonFindExpNameHead);
      }
+
+      setEditBEJSON();
      createExpNameDropDownForBEEdit(jsonExpNameArr);
-
-
-     setEditBEJSON();
-
-
  }
 
  function createExpNameDropDownForBEEdit(jsonExpNameArr) {
      var jsonExpArr = [];
+     console.log("jsonExpNameArr : "+JSON.stringify(jsonExpNameArr));
      if (jsonExpNameArr != null && jsonExpNameArr.length > 0) {
          for (var i = 0; i < jsonExpNameArr.length; i++) {
              var stateArr = new Array();
@@ -4047,13 +4207,20 @@ function arrayRemove(arr, value) {
 
      document.getElementById("expAmt").value = jsonFindBEEditValues.amount;
 
+
+
+setTimeout(function() {
      j("#expenseName").select2("val", jsonFindBEEditValues.expenseId);
+}, 50);
+
 
      j("#currency").select2("val", jsonFindBEEditValues.currencyId);
 
      document.getElementById("expFromLoc").value = jsonFindBEEditValues.fromLocation;
 
      document.getElementById("expToLoc").value = jsonFindBEEditValues.toLocation;
+
+     exceptionStatus = jsonFindBEEditValues.isEntitlementExceeded;
 
      getPerUnitFromDBForEdit(jsonFindBEEditValues.expenseId);
 
@@ -4087,7 +4254,7 @@ function arrayRemove(arr, value) {
 
  function updateBusinessDetails(busExpDetailId) {
 
-         var acc_head_id;
+     var acc_head_id;
      var acc_head_val;
 
      var exp_name_id;
@@ -4166,12 +4333,14 @@ function arrayRemove(arr, value) {
          file = "";
      }
 
+     var entitlement_exceeded =  exceptionStatus;
+
      if (validateExpenseDetails(exp_date, exp_from_loc, exp_to_loc, exp_narration, exp_unit, exp_amt, acc_head_id, exp_name_id, currency_id, file)) {
 
          if (mydb) {
              mydb.transaction(function(t) {
 
-                 t.executeSql("UPDATE businessExpDetails set accHeadId ='" + acc_head_id + "', expNameId ='" + exp_name_id + "',expDate = '" + exp_date + "'   ,expFromLoc = '" + exp_from_loc + "'   ,expToLoc = '" + exp_to_loc + "'    ,expUnit = '" + exp_unit + "'   , expAmt = '" + exp_amt + "'   ,    expNarration = '" + exp_narration + "' ,currencyId = '" + currency_id + "' ,busExpAttachment = '" + file + "' where busExpId = " + busExpDetailId + ";");
+                 t.executeSql("UPDATE businessExpDetails set accHeadId ='" + acc_head_id + "', expNameId ='" + exp_name_id + "',expDate = '" + exp_date + "'   ,expFromLoc = '" + exp_from_loc + "'   ,expToLoc = '" + exp_to_loc + "'    ,expUnit = '" + exp_unit + "'   , expAmt = '" + exp_amt + "'   ,    expNarration = '" + exp_narration + "' ,currencyId = '" + currency_id + "',  isEntitlementExceeded = '" + entitlement_exceeded + "',busExpAttachment = '" + file + "' where busExpId = " + busExpDetailId + ";");
              });
 
              alert("Record update successfully");
@@ -4183,11 +4352,12 @@ function arrayRemove(arr, value) {
      }
  }
 
- function getPrimaryExpenseId(expMstId) {
+ function getPrimaryExpenseId(expMstId,accountCodeId,accHeadIdVal) {
+
      if (mydb) {
          //Get all the employeeDetails from the database with a select statement, set outputEmployeeDetails as the callback function for the executeSql command
          mydb.transaction(function(t) {
-             t.executeSql("SELECT id FROM expNameMst where expNameMstId=" + expMstId, [], getExpId);
+             t.executeSql("SELECT id FROM expNameMst where expNameMstId=" + expMstId + " and accCodeId ="+ accountCodeId +" and accHeadId = " +accHeadIdVal, [], getExpId);
          });
      } else {
          alert(window.lang.translate('Database not found, your browser does not support web sql!'));
@@ -4220,7 +4390,7 @@ function arrayRemove(arr, value) {
      var selected_Date = $("#selectDate_One").datepicker("getDate");
 
      // get days
-     var days = (current_Date - selected_Date) / (1000 * 60 * 60 * 24);
+     var days = (selected_Date - current_Date) / (1000 * 60 * 60 * 24);
 
      getDelayDays(days);
 
@@ -4233,7 +4403,7 @@ function arrayRemove(arr, value) {
      var selected_Date = $("#selectDate_Three").datepicker("getDate");
 
      // get days
-     var days = (current_Date - selected_Date) / (1000 * 60 * 60 * 24);
+     var days = (selected_Date - current_Date) / (1000 * 60 * 60 * 24);
 
      getDelayDays(days);
 
@@ -4253,7 +4423,7 @@ function arrayRemove(arr, value) {
                          var row = results.rows.item(i);
                          noOfDays = row.noOfDays;
 
-                         if (daysDiff <= noOfDays && daysDiff > -7) {
+                         if (daysDiff < noOfDays) {
 
                              j('#validationMsgBox').show();
                              j('#validationMsgBoxRoundTrip').show();
@@ -4488,7 +4658,30 @@ function arrayRemove(arr, value) {
      }
 
      if (travelReqID != 'undefined' && travelReqID != '-1') {
-         getExpenseIdForTravelFromDB(travelReqID, travelModeID, travelCategoryID, cityTownID, travelExpenseReqID, cityTownName, travelExpenseReqName);
+         setCityTownTypeId(cityTownID, travelReqID, travelModeID, travelCategoryID, travelExpenseReqID, cityTownName, travelExpenseReqName)
+     }
+ }
+
+ function setCityTownTypeId(cityTownID, travelReqID, travelModeID, travelCategoryID, travelExpenseReqID, cityTownName, travelExpenseReqName){
+   if (mydb) {
+         mydb.transaction(function(t) {
+             t.executeSql("SELECT cityTownTypeId FROM cityTownMst where cityTownId=" + cityTownID, [],
+                 function(transaction, results) {
+
+                     for (i = 0; i < results.rows.length; i++) {
+
+                         var row = results.rows.item(i);
+                         var cityTownTypeId = row.cityTownTypeId;
+
+                         if (cityTownTypeId != "" && cityTownTypeId != 0) {
+                                getExpenseIdForTravelFromDB(travelReqID, travelModeID, travelCategoryID, cityTownTypeId, travelExpenseReqID, cityTownName, travelExpenseReqName);
+                         }
+
+                     }
+                 });
+         });
+     } else {
+         alert(window.lang.translate('Database not found, your browser does not support web sql!'));
      }
  }
 
@@ -4505,6 +4698,7 @@ function arrayRemove(arr, value) {
                          var expenseNameId = row.expenseNameId;
 
                          if (expenseNameId != "" && expenseNameId != 0) {
+
                              calcuteEntitlementForTS(expenseNameId, travelReqID, travelExpenseReqID, travelModeID, travelCategoryID, cityTownID, cityTownName, travelExpenseReqName);
                          }
 
@@ -4519,7 +4713,7 @@ function arrayRemove(arr, value) {
 
  function calcuteEntitlementForTS(expenseNameId, travelReqID, travelExpenseReqID, travelModeID, travelCategoryID, cityTownID, cityTownName, travelExpenseReqName) {
 
-     console.log("travelExpenseNameID : " + expenseNameId + "cityTownID : " + cityTownID);
+     //console.log("travelExpenseNameID : " + expenseNameId + " cityTownID : " + cityTownID);
 
      if (validateValuesForEntitlement(travelReqID, travelModeID, travelCategoryID, cityTownID, travelExpenseReqID)) {
          if (mydb) {
@@ -4536,8 +4730,10 @@ function arrayRemove(arr, value) {
                              if (tsAmount > amount) {
                                  exceptionMessage = "(Exceeding Per Diem Entitlement amount defined: " + amount + " for Expense Head :  " + travelExpenseReqName + " and City/Town : " + cityTownName + ")";
                                  j('#travelErrorMsgArea').children('span').text(exceptionMessage);
+                                 exceptionStatus = 'Y' ;
                              } else {
                                  j('#travelErrorMsgArea').children('span').text(exceptionMessage);
+                                 exceptionStatus = 'N' ;
                              }
 
                          }
@@ -4681,6 +4877,21 @@ function arrayRemove(arr, value) {
                                  if (document.getElementById("sideNavProfilePreview") != null) {
                                      document.getElementById("sideNavProfilePreview").src = "data:image/png;base64," + row.profileAttachment;
                                  }
+                                 if(document.getElementById("ProfilePreview") != null){
+                                     var x = document.getElementById("ProfilePreview").complete;
+                                     console.log("x = "+x);
+                                     if(x == false){
+                                         //document.getElementById("ProfilePreview").src =  "images/profilepic.png";
+                                     }
+                                 }
+                                if(document.getElementById("sideNavProfilePreview") != null){
+                                     var x = document.getElementById("sideNavProfilePreview").complete;
+                                     console.log("x = "+x);
+                                     if(x == false){
+                                        // document.getElementById("sideNavProfilePreview").src =  "images/profilepic.png";
+                                     }
+                                 }
+
                              }
                          }
 
@@ -4741,7 +4952,31 @@ function arrayRemove(arr, value) {
         j('#mainContainer').load(pageRef);
      }
 
+          if(statusOfVoucher == 'Q'){
+       
+         var headerBackBtn = defaultPagePath + 'backbtnPage.html';
+         var pageRef = defaultPagePath + 'queryMainPage.html';
+         appPageHistory.push(pageRef);
+        j('#mainHeader').load(headerBackBtn);
+        j('#mainContainer').load(pageRef);
+     
+     }
+ }
 
+  function hideTRQuery(){
+
+    if (window.localStorage.getItem("APPLICATION_VERSION") == false || window.localStorage.getItem("versionNumber") > 12.3) {
+        if (window.localStorage.getItem("TrRole") == "true") {
+            document.getElementById('trQueryTab').style.display = "block";
+            document.getElementById('tsQueryTab').style.display = "block";
+            } else {
+            document.getElementById('trQueryTab').style.display = "none";
+            document.getElementById('tsQueryTab').style.display = "none";
+            }
+        } else {
+            document.getElementById('trQueryTab').style.display = "none";
+            document.getElementById('tsQueryTab').style.display = "none";
+        }
  }
 
  function syncVoucherHeader(statusOfVoucher) {
@@ -4765,6 +5000,7 @@ function arrayRemove(arr, value) {
                  });
 
                  if (data.Status == 'Success') {
+                     
                      var claimExpArray = data.expenseDetails;
 
                      mydb.transaction(function(t) {
@@ -4788,15 +5024,21 @@ function arrayRemove(arr, value) {
                                  var currentOwnerName = headArray.currentOwnerName;
                                  var rejectionComments = headArray.rejectionComments;
                                  var createdById = headArray.createdById;
-                                 var creatorName =  headArray.creatorName
-
-                                 t.executeSql("INSERT INTO BEHeader (busExpHeaderId ,busExpNumber ,accHeadId ,accHeadDesc ,voucherDate ,startDate ,endDate ,currencyId ,currencyName ,editorTotalAmt ,vocherStatus , currentOwnerId, currentOwnerName, createdById, creatorName , rejectionComments) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)", [busExpHeaderId, busExpNumber, accHeadId, accHeadDesc, voucherDate, startDate, endDate, currencyId, currencyName, editorTotalAmt, vocherStatus, currentOwnerId, currentOwnerName, createdById, creatorName , rejectionComments]);
+                                 var creatorName =  headArray.creatorName;
+                                 var query =  headArray.query;
+                                 var queryId =  headArray.queryId;
+                                 var queryAns =  headArray.queryAns;
+                                 var workflowToBeFollowed = headArray.workflowToBeFollowed;
+                                 
+                                 t.executeSql("INSERT INTO BEHeader (busExpHeaderId ,busExpNumber ,accHeadId ,accHeadDesc ,voucherDate ,startDate ,endDate ,currencyId ,currencyName ,editorTotalAmt ,vocherStatus , currentOwnerId, currentOwnerName, createdById, creatorName , rejectionComments, query, queryId, queryAns, workflowToBeFollowed) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)", [busExpHeaderId, busExpNumber, accHeadId, accHeadDesc, voucherDate, startDate, endDate, currencyId, currencyName, editorTotalAmt, vocherStatus, currentOwnerId, currentOwnerName, createdById, creatorName , rejectionComments , query, queryId, queryAns, workflowToBeFollowed]);
 
                              }
                          }
                          requestRunning = false;
                          if (statusOfVoucher == 'F' || statusOfVoucher == 'R' || statusOfVoucher == 'P' || statusOfVoucher == 'U' || statusOfVoucher == 'D') {
                              displayPastVoucherPage(data.Status);
+                         } else if(statusOfVoucher == 'Q'){
+                            displayQueryPage(data.Status);
                          } else {
                              displayApprovalPage(data.Status);
                          }
@@ -4805,14 +5047,16 @@ function arrayRemove(arr, value) {
 
                  } else if (data.Status == 'SUCCESS_NO_DATA') {
                      requestRunning = false;
-                     if (statusOfVoucher == 'F' || statusOfVoucher == 'R' || statusOfVoucher == 'P' || statusOfVoucher == 'U' || statusOfVoucher == 'D') {
+                     if (statusOfVoucher == 'F' || statusOfVoucher == 'R' || statusOfVoucher == 'P' || statusOfVoucher == 'U' || statusOfVoucher == 'D' || statusOfVoucher == 'Q') {
                          displayPastVoucherPage(data.Status);
-                     } else {
+                     }  else if(statusOfVoucher == 'Q'){
+                        displayQueryPage(data.Status);
+                    } else {
                          displayApprovalPage(data.Status);
                      }
                  } else {
                      requestRunning = false;
-                     if (statusOfVoucher == 'F' || statusOfVoucher == 'R' || statusOfVoucher == 'P' || statusOfVoucher == 'U' || statusOfVoucher == 'D') {
+                     if (statusOfVoucher == 'F' || statusOfVoucher == 'R' || statusOfVoucher == 'P' || statusOfVoucher == 'U' || statusOfVoucher == 'D' ||statusOfVoucher == 'Q') {
                          displayPastVoucherPage(data.Status);
                      } else {
                          displayApprovalPage(data.Status);
@@ -4871,8 +5115,6 @@ function arrayRemove(arr, value) {
  }
 
  function fetchViewForVouchersHeader() {
-     var statusForEdit = "";
-     var pendingAt = "";
      mydb.transaction(function(t) {
          t.executeSql('SELECT * FROM BEHeader;', [],
              function(transaction, result) {
@@ -4880,6 +5122,9 @@ function arrayRemove(arr, value) {
                      j('#voucherHeader').empty();
                      for (record = 0; record < result.rows.length; record++) {
                          var row = result.rows.item(record);
+
+                         var statusForEdit = "";
+                         var pendingAt = "";
 
                          if (row.vocherStatus == 'R') {
                              statusForEdit = 'Sent Back';
@@ -4892,6 +5137,8 @@ function arrayRemove(arr, value) {
                              pendingAt = 'Payment Desk'
                          }  else if(row.vocherStatus == 'D'){
                              statusForEdit = 'Draft';
+                         }  else if(row.vocherStatus == 'Q'){
+                             statusForEdit = 'In Queries';
                          }
 
                          if(enableDivBasedOnStatus == "A"){
@@ -4907,28 +5154,66 @@ function arrayRemove(arr, value) {
                          var data =
                              "<div class='col-md-12' onclick='fetchViewForVoucherDetails(" + row.busExpHeaderId + ");'>" 
                              + "<div class='card shadow'>" 
-                             + "<div class='card-header' style='font-size: 15px;color: #076473;'>" 
+                             + "<div class='card-header' style='font-size: 15px;color: #076473;'>"
+
+                             + "<span style='display: inline;' id = 'isEntitlementExceeded_"+record+"'></span>"
+  
                              + row.busExpNumber 
-                             +"<h7 style='display: inline;'>&nbsp("+defaultCurrency+")</h7>"
-                             + "<label style = 'color:darkorange;float: right;'>" + statusForEdit + "</label></div>" 
-                             + "<div class='card-body'>" 
-                             + "<div style='display: inline-flex;'>" 
-                             + "<label>" + row.accHeadDesc + "</label>" 
-                             + "<span style='margin-left:15px;'>" 
-                             + "<i class='fa fa-user'></i>" 
-                             + "<label>&nbsp;" +pendingAt 
-                             + "</label>" + "</span>" + "<span style='margin-left:25px;'>" 
-                             + "<i class='fa fa-money'></i>" + "<label>&nbsp;" + row.editorTotalAmt + "</label>" 
-                             + "</span>" + "</div>" + "</div>" + "<div class='card-footer'>" 
-                             + "<span style='width: 25%;display: contents;'>" 
-                             + "<i class='fa fa-calendar' aria-hidden='true' style='margin-left: 5px;'></i>" 
-                             + "<label><h5>&nbsp;" + row.startDate + ' - ' + row.endDate + "</h5></label>"
-                             +"</span>" + "</span>" + "</div>" + "</div>" + "</div>" + "<br>";
+                                + "<h7 style='display: inline;'>&nbsp("+defaultCurrency+")</h7>"
+                                + "<label style = 'color:darkorange;float: right;'>" + statusForEdit + "</label></div>" 
+                                 + "<div class='card-body' style='padding: 10px;'>" 
+                                        + "<div class='row'>" 
+                                            + "<div class='col-md-12' style='margin-bottom: 5px;'>"
+                                                + "<label>" + row.accHeadDesc + "</label>"  
+                                            + "</div>" 
+                                        + "</div>" 
+                                        + "<div class='row'>"
+                                            + "<div class='col-md-12' style='margin-bottom: 5px;'>"
+                                                + "<i class='fa fa-user'></i>" 
+                                                + "<label style='font-weight: 500;'>&nbsp;" +pendingAt + "</label>"
+                                                + "<span style='display: inline; float: right;'>"
+                                                    + "<i class='fa fa-money'></i>" 
+                                                    + "<label>&nbsp;" 
+                                                    + row.editorTotalAmt 
+                                                    + "</label>" 
+                                                + "</span>"
+                                            + "</div>" 
+                                         + "</div>" 
+                                         + "<div class='row'>" 
+                                             + "<div class='col-md-12' style='margin-bottom: 5px;'>"
+                                                + "<span style='display: inline-block;'>"
+                                                    + "<i class='fa fa-calendar' aria-hidden='true'></i>" 
+                                                    + "<label><h5>&nbsp;" + row.startDate + ' - ' + row.endDate + "<h5></label>"
+                                                 + "</span>" 
+                                            + "</div>"
+                                         + "</div>" 
+                                 + "</div>" 
+                              + "</div>" 
+                            + "<br>";
+
+
+                  
 
                          j('#voucherHeader').append(data);
 
+
+            if (row.workflowToBeFollowed == 'D') {
+                if (window.localStorage.getItem("APPLICATION_VERSION") == false || window.localStorage.getItem("versionNumber") > 12.4) {
+
+                    var buttonValue =
+                        "<i style='font-size: 12px;color: red;float: left;;margin-top: 5px;' class='fa fa-circle'></i>" + "&nbsp;";
+
+                    j('#isEntitlementExceeded_' + record).append(buttonValue);
+
+                }
+
+            }
+
                      }
+
+
                  }
+
 
              });
 
@@ -4936,6 +5221,7 @@ function arrayRemove(arr, value) {
  }
 
  // ******************************** View Past Voucher  / For My Approval Header -- End *********************************************//
+
 
   function fetchCountForMyApproval(statusOfVoucher) {
 
@@ -4955,9 +5241,18 @@ function arrayRemove(arr, value) {
              if (data.Status == "Success") {
 
                  var countForVouchers = data.VoucherCount.toString();
-                 
+
+
                 if(statusOfVoucher == 'A' && document.getElementById('count') != null){
                  document.getElementById("count").innerHTML = countForVouchers.match(/\d+/);
+
+                   var totalArray = countForVouchers.split(",");
+
+                    for(var i = 0 ; i < totalArray.length ; i++){
+                        if(totalArray[i].includes("Q") && document.getElementById('queryCount') != null){
+                            document.getElementById("queryCount").innerHTML = totalArray[i].match(/\d+/);
+                     }
+                   }
                 }else{
                      var arrayOfCount = countForVouchers.split(",");
 
@@ -4977,6 +5272,9 @@ function arrayRemove(arr, value) {
                         }
                          if(arrayOfCount[i].includes("R") && document.getElementById('sendBackCount') != null){
                             document.getElementById("sendBackCount").innerHTML = arrayOfCount[i].match(/\d+/);
+                        }
+                          if(arrayOfCount[i].includes("Q") && document.getElementById('queryCount') != null){
+                            document.getElementById("queryCount").innerHTML = arrayOfCount[i].match(/\d+/);
                         }
 
                      }
@@ -5031,7 +5329,6 @@ function arrayRemove(arr, value) {
 
     var headerBackBtn = defaultPagePath + 'backbtnPage.html';
     var pageRef = defaultPagePath + 'voucherDetails.html';
-    
 
     if( !appPageHistory.includes('app/pages/voucherDetails.html')){
             appPageHistory.push(pageRef);
@@ -5043,6 +5340,7 @@ function arrayRemove(arr, value) {
           fetchdetails(busExpHeaderId,voucherDetailArray);
         });
      });
+     
  }
 
  function fetchdetails(busExpHeaderId, voucherDetailArray) {
@@ -5122,18 +5420,21 @@ function arrayRemove(arr, value) {
     return( date.getMonth() + 1 + "/" +date.getDate());
 }
 
+
  function setHeaderToDetail(busExpHeaderId, voucherDetailArray, detailBodyLines) {
-     var statusForEdit = "";
-     var pendingAt = "";
+
      mydb.transaction(function(t) {
 
          t.executeSql('SELECT * FROM BEHeader where busExpHeaderId = ' + busExpHeaderId, [],
-             function(transaction, result) {
+             function(transaction, result) {``
                  if (result != null && result.rows != null) {
                      j('#voucherDetailsTab').empty();
                      for (record = 0; record < result.rows.length; record++) {
                          var row = result.rows.item(record);
 
+                            var statusForEdit = "";
+                            var pendingAt = "";
+                        
                          if (row.vocherStatus == 'R') {
                              statusForEdit = 'Sent Back';
                          } else if (row.vocherStatus == 'P') {
@@ -5145,6 +5446,8 @@ function arrayRemove(arr, value) {
                              pendingAt = 'Payment Desk'
                          }  else if (row.vocherStatus == 'D') {
                              statusForEdit = 'Draft';
+                         }  else if (row.vocherStatus == 'Q') {
+                             statusForEdit = 'In Queries';
                          }
 
                         if(enableDivBasedOnStatus == "A"){
@@ -5163,24 +5466,32 @@ function arrayRemove(arr, value) {
                          var data =
                              "<div class='col-md-12'>" 
                              + "<div class='card shadow'>" 
-                             + "<div class='card-header' style='font-size: 15px;color: #076473;'>" 
+                             + "<div class='card-header' style='font-size: 15px;color: #076473;'>"
+                             +"<span style='display: inline;' id = 'isEntitlementExceeded_" + record + "'></span>"
                              + row.busExpNumber 
                              +"<h7 style='display: inline;'>&nbsp("+defaultCurrency+")</h7>"
                              +"<label style = 'color:darkorange;float: right;'>" + statusForEdit + "</label></div>"
 
-                         +"<div class='card-body'>" + "<div style='display: inline-flex;'>" + "<label style='margin-left: -5px;'>" + row.accHeadDesc + "</label>" + "<span style='margin-left:15px;'>" + "<i class='fa fa-user'></i>" 
-                         + "<label>&nbsp;" + pendingAt + "</label>" + "</span>" 
-                         + "<span style='margin-left:25px;'>" 
-                         + "<i class='fa fa-money'></i>" 
-                         + "<label>&nbsp;" + row.editorTotalAmt +"</label>" 
-                         + "</span>" 
-                         + "</div>" 
-                         + "</div>" 
-                         + "<div class='card-footer' id = 'buttonsAttached' style='padding-bottom:20px;'>" 
+                         + "<div class='card-body'>" 
+                                 + "<div style='margin-bottom: 5px;'>" 
+                                    + "<label style='font-weight: 500;'>" + row.accHeadDesc + "</label>"    
+                                 + "</div>" 
+                                 + "<div>"
+                                 + "<i class='fa fa-user'></i>" 
+                                 + "<label style='font-weight: 500;'>&nbsp;" + pendingAt + "</label>"
+                                     + "<span style='display: inline; float: right;'>"
+                                     + "<i class='fa fa-money'></i>" 
+                                     + "<label style='font-weight: 500;'>&nbsp;" 
+                                     + row.editorTotalAmt 
+                                     + "</label>" 
+                                     + "</span>"
+                                 + "</div>" 
+                             + "</div>" 
+                         + "<div class='card-footer' id='buttonsAttached' style='padding-bottom:20px;'>" 
+                        
                          + "<span style='width: 25%;display: contents;'>" 
                          + "<i class='fa fa-calendar' aria-hidden='true' style='margin-left: 5px;'></i>" 
-                         + "<label><h5 style='padding-bottom: 10%;'>&nbsp;" + row.startDate + ' - ' + row.endDate + "</h5></label>"
-
+                         + "<label><h5 style='padding-bottom: 10%;style='font-weight: 500;''>&nbsp;" + row.startDate + ' - ' + row.endDate + "</h5></label>"
                          + "</span>"
 
                          + "<div class='table-responsive'>" 
@@ -5196,11 +5507,29 @@ function arrayRemove(arr, value) {
                          + "<tbody id='detailBodyId'>" + detailBodyLines + "</tbody>" 
                          + "</table>" 
                          + "</div>" 
-                         + "</div>" 
-                         + "</div>" 
-                         + "</div>";
+                         + "</div>"
 
+                         + "<div id = 'policies' style='display: none;' onclick='fetchException("+busExpHeaderId+","+"1)'>"
+                         + "<td><i class='fa fa-plus-square-o' style='font-size:18px;color:#337ab7;padding: 6px;'> Policies</i></td>"
+                         + "</div>"
+                         + "<div id = 'exceptionMsg' style='padding-left: 5px; padding-bottom: 5px; padding-right:5px;'>"
+                         +"</div>"
+                         + "</div>"   
+                         + "</div>";
                          j('#voucherDetailsTab').append(data);
+
+                         if (window.localStorage.getItem("APPLICATION_VERSION") == false || window.localStorage.getItem("versionNumber") > 12.4) {
+                            if (row.workflowToBeFollowed == 'D') {
+                                var buttonValue =
+                                    "<i style='font-size: 12px;color: red;float: left;margin-top: 5px;' class='fa fa-circle'></i>" + "&nbsp;";
+
+                                j('#isEntitlementExceeded_' + record).append(buttonValue);
+
+                                document.getElementById('policies').style.display = "block";
+
+                            }
+
+                        }
 
                          if (statusForEdit == 'Sent Back') {
 
@@ -5210,8 +5539,9 @@ function arrayRemove(arr, value) {
                                             +"<br>"
                                             +"<div style='border: 1px;background-color: #eeeeee;padding: 10px 0 10px 10px;box-sizing: border-box;width: 98%;padding-left: 10;'>"+row.rejectionComments+"</div>"
                                             +"<div><br>"
-                                            +"<div class='col-md-12' id = 'editButton' style='text-align: center;padding-bottom: 20px;'>" + "<button type='submit' class='btn btn-primary' onclick='expPrimaryIdSB()'>Edit</button>&nbsp;" 
-                                            +"<button type='submit' id = 'sendForApproveBtn' class='btn btn-primary' onclick='approveVoucher(" + row.busExpHeaderId + ")'>Send For Approval</button>&nbsp;" + "</div>";
+                                            +"<div class='col-md-12' id = 'editButton' style='text-align: center;padding-bottom: 20px;'>" 
+                                            + "<button type='submit' class='btn btn-primary' onclick='expPrimaryIdSB()'>Edit</button>&nbsp;" 
+                                           +"<button type='submit' id = 'sendForApproveBtn' class='btn btn-primary' onclick='approveVoucher(" + busExpHeaderId + ")'>Send For Approval</button>&nbsp;" + "</div>";
 
                              j('#buttonsAttached').append(buttonValue);
                          }
@@ -5219,21 +5549,28 @@ function arrayRemove(arr, value) {
                          if (statusForEdit == 'Draft') {
 
                              buttonValue =  
-                                            "<div class='col-md-12' id = 'editButton' style='text-align: center;padding-bottom: 20px;'>" + "<button type='submit' class='btn btn-primary' onclick='expPrimaryIdSB()'>Edit</button>&nbsp;" 
-                                            +"<button type='submit' id = 'sendForApproveBtn' class='btn btn-primary' onclick='approveVoucher(" + row.busExpHeaderId + ")'>Send For Approval</button>&nbsp;" + "</div>";
+                                            "<div class='col-md-12' id = 'editButton' style='text-align: center;padding-bottom: 20px;'>" 
+                                            + "<button type='submit' class='btn btn-primary' onclick='expPrimaryIdSB()'>Edit</button>&nbsp;" 
+                                         +"<button type='submit' id = 'sendForApproveBtn' class='btn btn-primary' onclick='approveVoucher(" + busExpHeaderId + ")'>Send For Approval</button>&nbsp;" + "</div>";
 
                              j('#buttonsAttached').append(buttonValue);
                          }
 
                          if(enableDivBasedOnStatus == 'A'){
-                             buttonValue =  "<div class='col-md-12' style='text-align: center; padding-bottom: 20px;'>"
+                            
+                            buttonValue =  "<div class='col-md-12' style='text-align: center; padding-bottom: 20px;'>"
                                             +"<button type='submit' id = 'approveBtn' class='btn btn-primary' onclick='approveVoucher("+row.busExpHeaderId+")'>Approve</button>&nbsp;"
-                                            +"<button type='button' id = 'RejectedBtn' class='btn btn-primary' data-toggle='modal' data-id="+row.busExpHeaderId+" data-target='#myModal'>Send Back</button>"
+                                            +"<button type='button' id = 'RejectedBtn' class='btn btn-primary' data-toggle='modal' data-id="+row.busExpHeaderId+"_1"+" data-target='#myModal'>Send Back</button>"
                                             +"</div>";
-
-                             j('#buttonsAttached').append(buttonValue);
+                              j('#buttonsAttached').append(buttonValue);
 
                         }
+                         
+                         if(statusForEdit =='In Queries' && enableDivBasedOnStatus == 'A'){
+                            document.getElementById("RejectedBtn").disabled =true;
+                            document.getElementById("approveBtn").disabled =true;
+                            }
+                          
 
                         if(row.vocherStatus == 'R' || row.vocherStatus == 'D'){
 
@@ -5247,6 +5584,43 @@ function arrayRemove(arr, value) {
                                  }
                             });
                         }
+                        var empId = window.localStorage.getItem("EmployeeId");
+                        var len = appPageHistory.length;
+                        var pg = appPageHistory[len - 3];
+                        if(statusForEdit == 'In Queries'  && (empId==row.createdById) && pg !='app/pages/viewPastVoucher.html'){
+                            
+                            var ids = row.busExpHeaderId+'&'+row.queryId;
+                       
+                            if(row.queryAns == "" || row.queryAns=="undefined" ||row.queryAns=="Null"){
+                                buttonValue =   
+                                            "<br>"
+                                            +"<div style='margin-left: 2%;'><label>Query Asked To Me:</label>"
+                                            +"<br>"
+                                            +"<div style='border: 1px;background-color: #eeeeee;padding: 10px 0 10px 10px;box-sizing: border-box;width: 98%;padding-left: 10;'>"+row.query+"</div>"
+                                            +"<div><br>"
+                                            +"<div class='col-md-12' style='text-align: center;'>"
+                                            +"<button type='button' id = 'QueryBtn' class='btn btn-primary' data-toggle='modal' data-id="+ids+" data-target='#myModalQuery'>Reply</button>"
+                                            +"</div>"
+                                            ;
+                             }else{
+                                 buttonValue =   
+                                            "<br>"
+                                            +"<div style='margin-left: 2%;'><label>Query Asked To Me:</label>"
+                                            +"<br>"
+                                            +"<div style='border: 1px;background-color: #eeeeee;padding: 10px 0 10px 10px;box-sizing: border-box;width: 98%;padding-left: 10;'>"+row.query+"</div><br>"
+                                            +"<div style='margin-right: 2%;'><label>Reply:</label>"
+                                            +"<div style='border: 1px;background-color: #eeeeee;padding: 10px 0 10px 10px;box-sizing: border-box;width: 98%;padding-left: 10;'>"+row.queryAns+"</div>"
+                                            +"<div><br>"
+                                            +"<div class='col-md-12' style='text-align: center;'>"
+                                            +"<button type='button' id = 'QueryBtn' class='btn btn-primary' data-toggle='modal' data-id="+ids+" data-target='#myModalQuery'>Edit</button>"
+                                            +"</div>"
+                                            ;
+                             }
+                       
+
+                             j('#buttonsAttached').append(buttonValue);
+                            
+                            }
 
                      }
                  }
@@ -5256,18 +5630,21 @@ function arrayRemove(arr, value) {
 
  }
 
+
 // ************************************** Approve Reject Voucher Start ************************************************ //
+
 function rejectVoucher(){
-    var headerBackBtn = defaultPagePath + 'backbtnPage.html';
+     var headerBackBtn = defaultPagePath + 'backbtnPage.html';
     var pageRefSuccess = defaultPagePath + 'success.html';
     var busExpHeaderId = j("#RejectedBtn").data('id');
     var comment = j.trim(j("#sendBackComment").val());
 
     if(comment != ""){
 
+        var res = busExpHeaderId.split("_");
         var jsonToBeSendForApproval = new Object();
-        jsonToBeSendForApproval["processId"] = '1';
-        jsonToBeSendForApproval["headerList"] = busExpHeaderId;
+        jsonToBeSendForApproval["processId"] = res[1];
+        jsonToBeSendForApproval["headerList"] = res[0];
         jsonToBeSendForApproval["employeeId"] = window.localStorage.getItem("EmployeeId");
         jsonToBeSendForApproval["buttonStatus"] = "R";
         jsonToBeSendForApproval["rejectionComment"] = comment;
@@ -5284,28 +5661,81 @@ function rejectVoucher(){
               
                 if (data.Status == "Success") {
                     j('#loading_Cat').hide();
-                    var claimExpArray = data.expenseDetails;
 
-                    mydb.transaction(function(t) {
-                        if (claimExpArray != null && claimExpArray.length > 0) {
-                            for (var i = 0; i < claimExpArray.length; i++) {
-                                var headArray = new Array();
-                                headArray = claimExpArray[i];
-                                //console.log("headArray : "+headArray);
+                    if(res[1] == 1){
+                        var claimExpArray = data.expenseDetails;
 
-                                var approvalMsg = headArray.message;
-                                successMessage = approvalMsg;
+                        mydb.transaction(function(t) {
+                            if (claimExpArray != null && claimExpArray.length > 0) {
+                                for (var i = 0; i < claimExpArray.length; i++) {
+                                    var headArray = new Array();
+                                    headArray = claimExpArray[i];
+                                    //console.log("headArray : "+headArray);
 
+                                    var approvalMsg = headArray.message;
+                                    successMessage = approvalMsg;
+
+                                }
                             }
-                        }
 
-                        if(successMessage != null && successMessage != ""){
-                            j('#loading_Cat').hide();
-                            j('#mainHeader').load(headerBackBtn);
-                            j('#mainContainer').load(pageRefSuccess);
-                        }
-                        requestRunning = false;             
-                    });
+                            if(successMessage != null && successMessage != ""){
+                                j('#loading_Cat').hide();
+                                j('#mainHeader').load(headerBackBtn);
+                                j('#mainContainer').load(pageRefSuccess);
+                            }
+                            requestRunning = false;             
+                        });
+                    }
+
+                    if(res[1] == 3){
+                        var travelRequestArray = data.travelRequestDetails;
+
+                        mydb.transaction(function(t) {
+                            if (travelRequestArray != null && travelRequestArray.length > 0) {
+                                for (var i = 0; i < travelRequestArray.length; i++) {
+                                    var headArray = new Array();
+                                    headArray = travelRequestArray[i];
+                                    //console.log("headArray : "+headArray);
+
+                                    var approvalMsg = headArray.message;
+                                    successMessage = approvalMsg;
+
+                                }
+                            }
+
+                            if(successMessage != null && successMessage != ""){
+                                j('#loading_Cat').hide();
+                                j('#mainHeader').load(headerBackBtn);
+                                j('#mainContainer').load(pageRefSuccess);
+                            }
+                            requestRunning = false;             
+                        });
+                    }
+
+                    if(res[1] == 5){
+                        var travelSettlementArray = data.travelSettlement;
+
+                        mydb.transaction(function(t) {
+                            if (travelSettlementArray != null && travelSettlementArray.length > 0) {
+                                for (var i = 0; i < travelSettlementArray.length; i++) {
+                                    var headArray = new Array();
+                                    headArray = travelSettlementArray[i];
+                                    //console.log("headArray : "+headArray);
+
+                                    var approvalMsg = headArray.message;
+                                    successMessage = approvalMsg;
+
+                                }
+                            }
+
+                            if(successMessage != null && successMessage != ""){
+                                j('#loading_Cat').hide();
+                                j('#mainHeader').load(headerBackBtn);
+                                j('#mainContainer').load(pageRefSuccess);
+                            }
+                            requestRunning = false;             
+                        });
+                    }
 
                     requestRunning = false;
                     j('#mainHeader').load(headerBackBtn);
@@ -5328,6 +5758,7 @@ function rejectVoucher(){
 }
 
  function approveVoucher(busExpHeaderId){
+
     var headerBackBtn = defaultPagePath + 'backbtnPage.html';
     var pageRefSuccess = defaultPagePath + 'success.html';
 
@@ -5522,6 +5953,7 @@ function setAttachOnLoadSB(attachFileId) {
 
                smallImageBE.style.display = 'block';
                smallImageBE.src =  "data:image/png;base64," + attachmentData;
+               updateAttachment = "data:image/jpeg;base64," + attachmentData;
                resetImageData();
 
                requestRunning = false;
@@ -5543,7 +5975,10 @@ function expPrimaryIdSB() {
             alert(window.lang.translate('Select single expense line for edit.'));
         } else {
             j("#detailBodyId tr.selected").each(function(index, row) {
-                getPrimaryExpenseIdSB(j(this).find('td.expNameId').text());
+                var expNameID = j(this).find('td.expNameId').text();
+                var accHeadIdVal = j(this).find('td.accHeadId').text();
+
+                getPrimaryExpenseIdSB(expNameID,accHeadIdVal);
             });
         }
     } else {
@@ -5551,11 +5986,12 @@ function expPrimaryIdSB() {
     }
 }
 
-function getPrimaryExpenseIdSB(expMstId) {
+function getPrimaryExpenseIdSB(expMstId,accHeadIdVal) {
+
      if (mydb) {
          //Get all the employeeDetails from the database with a select statement, set outputEmployeeDetails as the callback function for the executeSql command
          mydb.transaction(function(t) {
-             t.executeSql("SELECT id FROM expNameMst where expNameMstId=" + expMstId, [], getExpIdSB);
+              t.executeSql("SELECT id FROM expNameMst where expNameMstId=" + expMstId +" and accHeadId = " +accHeadIdVal, [], getExpIdSB);
          });
      } else {
          alert(window.lang.translate('Database not found, your browser does not support web sql!'));
@@ -5917,3 +6353,1510 @@ function getPrimaryExpenseIdSB(expMstId) {
 
  }
   //***************************** Agile Merging -- End *******************************************************//
+//********************************Query BE COde Added****************************************************//
+
+function queryAnwser(){
+    $('.modal-backdrop').remove();
+    var headerBackBtn = defaultPagePath + 'backbtnPage.html';
+    var pageRefSuccess = defaultPagePath + 'success.html';
+    var querBEId = j("#QueryBtn").data('id');
+    var beQueryId = querBEId.split("&");
+    var busExpHeaderId = beQueryId[0];
+    var queryId = beQueryId[1];
+    var comment = j.trim(j("#queryRply").val());
+    var file = "";
+
+    if(comment != ""){
+
+        var jsonToBeSendForQuery = new Object();
+        jsonToBeSendForQuery["processId"] = '1';
+        jsonToBeSendForQuery["busExpHeaderId"] = busExpHeaderId;
+        jsonToBeSendForQuery["queryId"] = queryId;
+        jsonToBeSendForQuery["employeeId"] = window.localStorage.getItem("EmployeeId");
+        jsonToBeSendForQuery["queryAnswer"] = comment;
+
+         if (fileTempGalleryBEQ == undefined || fileTempGalleryBEQ == "") {
+
+         } else {
+             file = fileTempGalleryBEQ;
+         }
+
+         if (fileTempCameraBEQ == undefined || fileTempCameraBEQ == "") {
+
+         } else {
+             file = fileTempCameraBEQ;
+         }
+
+         if(file != ""){
+            file = file.replace(/data:image\/(png|jpg|jpeg);base64,/, '');
+         }
+
+        jsonToBeSendForQuery["imageData"] = file;
+
+
+        j('#loading_Cat').show();
+
+        j.ajax({
+            url: window.localStorage.getItem("urlPath") + "SaveQueryFromMobile",
+            type: 'POST',
+            dataType: 'json',
+            crossDomain: true,
+            data: JSON.stringify(jsonToBeSendForQuery),
+            success: function(data) {
+              
+                if (data.Status == "Success") { 
+                   
+                     successMessage = "Query Answered Successfully";
+                     
+                    
+                     resetImageData();
+                       j('#loading_Cat').hide();
+                        j('#mainHeader').load(headerBackBtn);
+                         j('#mainContainer').load(pageRefSuccess);
+                          requestRunning = false;
+
+                } else {
+                     j('#loading_Cat').hide();
+                    successMessage = "Error: Oops something is wrong, Please Contact System Administer";
+                    requestRunning = false;
+                }
+            },
+            error: function(data) {
+                 j('#loading_Cat').hide();
+                requestRunning = false;
+            }
+        });
+    }else{
+        alert("Please enter Query Answer");
+    }
+}
+
+
+// ---------------------------------------------------  Travel Past -- Start -----------------------------------------------------  //
+
+ function TRTSAllViews() {
+
+     var headerBackBtn = defaultPagePath + 'backbtnPage.html';
+     var pageRef = defaultPagePath + 'TRTSAllViews.html';
+
+
+     j(document).ready(function() {
+         j('#mainHeader').load(headerBackBtn);
+         j('#mainContainer').load(pageRef);
+     });
+     appPageHistory.push(pageRef);
+
+ }
+ // *************************************** Travel Request Header / Details -- Start *****************************************************//
+
+ function viewTravelVoucherHeaders(statusOfVoucher) {
+
+     enableDivBasedOnStatus = statusOfVoucher;
+
+     // For My Approval Header Page
+     if(statusOfVoucher == 'A'){                                    
+         var headerBackBtn = defaultPagePath + 'backbtnPage.html';
+         var pageRef = defaultPagePath + 'viewTravelApproverVouchers.html';
+         appPageHistory.push(pageRef);
+        j('#mainHeader').load(headerBackBtn);
+        j('#mainContainer').load(pageRef);
+     } else if(statusOfVoucher == 'Q'){
+         var headerBackBtn = defaultPagePath + 'backbtnPage.html';
+         var pageRef = defaultPagePath + 'queryMainPage.html';
+         appPageHistory.push(pageRef);
+        j('#mainHeader').load(headerBackBtn);
+        j('#mainContainer').load(pageRef);
+     } else{
+         var headerBackBtn = defaultPagePath + 'backbtnPage.html';          //  My Expense Pages
+         var pageRef = defaultPagePath + 'viewTravelPastView.html'; 
+         appPageHistory.push(pageRef);
+        j('#mainHeader').load(headerBackBtn);
+        j('#mainContainer').load(pageRef);
+     }
+ }
+
+ function syncTravelVoucherHeader(statusOfVoucher) {
+
+     var jsonSentToSync = new Object();
+     jsonSentToSync["employeeId"] = window.localStorage.getItem("EmployeeId");
+     jsonSentToSync["processId"] = "3";
+     jsonSentToSync["vocherStatus"] = statusOfVoucher;
+
+     if (mydb) {
+         j.ajax({
+             url: window.localStorage.getItem("urlPath") + "SyncVoucherHeaders",
+             type: 'POST',
+             dataType: 'json',
+             crossDomain: true,
+             data: JSON.stringify(jsonSentToSync),
+             success: function(data) {
+
+                 mydb.transaction(function(t) {
+                     t.executeSql("DELETE FROM TravelHeader");
+                 });
+
+                 if (data.Status == 'Success') {
+                     
+                     var claimExpArray = data.expenseDetails;
+
+                     mydb.transaction(function(t) {
+                         if (claimExpArray != null && claimExpArray.length > 0) {
+                             for (var i = 0; i < claimExpArray.length; i++) {
+                                 var headArray = new Array();
+                                 headArray = claimExpArray[i];
+
+                                 var headerId = headArray.headerId;
+                                 var voucherNumber = headArray.voucherNumber;
+                                 var accHeadId = headArray.accHeadId;
+                                 var accHeadDesc = headArray.accHeadDesc;
+                                 var voucherDate = headArray.voucherDate;
+                                 var startDate = headArray.startDate;
+                                 var endDate = headArray.endDate;
+                                 var currencyId = headArray.currencyId;
+                                 var currencyName = headArray.currencyName;
+                                 var editorTotalAmt = headArray.editorTotalAmtcurrencyName;
+                                 var vocherStatus = headArray.vocherStatus;
+                                 var currentOwnerId = headArray.currentOwnerId;
+                                 var currentOwnerName = headArray.currentOwnerName;
+                                 var rejectionComments = headArray.rejectionComments;
+                                 var createdById = headArray.createdById;
+                                 var creatorName =  headArray.creatorName;
+                                 var iternaryType =  headArray.iternaryType;
+                                 var toLocation =  headArray.toLocation;
+                                 var fromLocation =  headArray.fromLocation;
+                                 var travelType =  headArray.travelType;           
+                                 var query =  headArray.query;
+                                 var queryId =  headArray.queryId;
+                                 var queryAns =  headArray.queryAns;
+                                 var workflowToBeFollowed = headArray.workflowToBeFollowed;
+
+                                 t.executeSql("INSERT INTO TravelHeader (headerId ,voucherNumber ,accHeadId ,accHeadDesc ,voucherDate ,startDate ,endDate ,currencyId ,currencyName ,editorTotalAmt ,vocherStatus , currentOwnerId, currentOwnerName, createdById, creatorName , rejectionComments, iternaryType, toLocation, fromLocation, travelType, query, queryId, queryAns, workflowToBeFollowed) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)", [headerId, voucherNumber, accHeadId, accHeadDesc, voucherDate, startDate, endDate, currencyId, currencyName, editorTotalAmt, vocherStatus, currentOwnerId, currentOwnerName, createdById, creatorName , rejectionComments , iternaryType, toLocation, fromLocation, travelType, query ,queryId, queryAns, workflowToBeFollowed]);
+
+                             }
+                         }
+                         requestRunning = false;
+                         if (statusOfVoucher == 'F' || statusOfVoucher == 'R' || statusOfVoucher == 'P' || statusOfVoucher == 'U' || statusOfVoucher == 'D') {
+                             displayTravelPastVoucherPage(data.Status);
+                         }  else if(statusOfVoucher == 'Q'){
+                            displayQueryVoucherPage(data.Status);
+                        } else {
+                             displayTravelApprovalPage(data.Status);
+                         }
+
+                     });
+
+                 } else if (data.Status == 'SUCCESS_NO_DATA') {
+                     requestRunning = false;
+                     if (statusOfVoucher == 'F' || statusOfVoucher == 'R' || statusOfVoucher == 'P' || statusOfVoucher == 'U' || statusOfVoucher == 'D') {
+                         displayTravelPastVoucherPage(data.Status);
+                     } else if(statusOfVoucher == 'Q'){
+                            displayQueryVoucherPage(data.Status);
+                    }else {
+                         displayTravelApprovalPage(data.Status);
+                     }
+                 } else {
+                     requestRunning = false;
+                     if (statusOfVoucher == 'F' || statusOfVoucher == 'R' || statusOfVoucher == 'P' || statusOfVoucher == 'U' || statusOfVoucher == 'D' ||statusOfVoucher == 'Q') {
+                         displayTravelPastVoucherPage(data.Status);
+                     } else {
+                         displayTravelApprovalPage(data.Status);
+                     }
+                 }
+
+             },
+             error: function(data) {
+                 requestRunning = false;
+                 if (statusOfVoucher == 'V') {
+                     displayTravelPastVoucherPage(data.Status);
+                 } else {
+                     displayTravelApprovalPage(data.Status);
+                 }
+             }
+         });
+     }
+ }
+
+ function displayTravelPastVoucherPage(statusOfVoucher) {
+
+     if (statusOfVoucher == "SUCCESS_NO_DATA") {
+
+              var data = "<div style='text-align: center;'>"
+                         +"<p  style='text-align: center;'><img src = 'images/noVoucher1.png'></p>"
+                         +"<h4><b style='color: darkgrey;'>No expense available.</b></h4>"
+                         +"<div>";
+              j("#voucherHeader").append(data);
+
+     } else {
+                fetchViewForTravelVouchersHeader();
+     }
+
+ }
+
+ function displayTravelApprovalPage(statusOfVoucher) {
+
+     if (statusOfVoucher == "SUCCESS_NO_DATA") {
+        requestRunning = false;
+
+         j(document).ready(function() {
+
+               var data = "<div style='text-align: center;'>"
+                         +"<p  style='text-align: center;'><img src = 'images/noVoucher1.png'></p>"
+                         +"<h4><b style='color: darkgrey;'>No expense available.</b></h4>"
+                         +"<div>";
+              j("#trVoucherHeader").append(data);
+
+         });
+
+     } else {
+         requestRunning = false;
+         resetImageData();
+         fetchViewForTravelApproveVouchersHeader();
+     }
+ }
+
+ function fetchViewForTravelVouchersHeader() {
+     
+     mydb.transaction(function(t) {
+         t.executeSql('SELECT * FROM TravelHeader;', [],
+             function(transaction, result) {
+                 if (result != null && result.rows != null) {
+                     j('#voucherHeader').empty();
+                     for (record = 0; record < result.rows.length; record++) {
+                         var row = result.rows.item(record);
+
+                         var pendingAt = "";
+                         var statusForEdit = "";
+
+                         if (row.vocherStatus == 'R') {
+                             statusForEdit = 'Sent Back';
+                         } else if (row.vocherStatus == 'P') {
+                             statusForEdit = 'Pending';
+                         } else if (row.vocherStatus == 'F') {
+                             statusForEdit = 'Paid';
+                         }  else if (row.vocherStatus == 'U') {
+                             statusForEdit = 'Unpaid';
+                             pendingAt = 'Payment Desk'
+                         }  else if(row.vocherStatus == 'D'){
+                             statusForEdit = 'Draft';
+                         }  else if(row.vocherStatus == 'Q'){
+                             statusForEdit = 'In Queries';
+                         }
+
+                         if(enableDivBasedOnStatus == "A"){
+                            pendingAt = row.creatorName;
+                         }
+
+                        if(pendingAt == ""){
+                            pendingAt = row.currentOwnerName;
+                        }
+
+                          var travelType = row.travelType;
+
+                        if (travelType.length > 12) {
+                            travelType = travelType.substr(0, 11) + "..";
+                        }
+
+                         var defaultCurrency  = window.localStorage.getItem("DefaultCurrencyName");
+
+
+                         var data =
+                             "<div class='col-md-12' onclick='fetchViewForTravelDetails(" + row.headerId+ ");'>" 
+                                + "<div class='card shadow'>" 
+                                    + "<div class='card-header' style='font-size: 15px;color: #076473;'>"
+                                    + "<span style='display: inline;' id = 'isEntitlementExceeded_"+record+"'></span>"
+                                          + row.voucherNumber 
+                                            +"<h7 style='display: inline;'>&nbsp("+defaultCurrency+")</h7>"
+                             + "<label style = 'color:darkorange;float: right;'>" + statusForEdit + "</label></div>" 
+                             + "<div class='card-body' style='padding: 10px;''>" 
+                                + "<div class='row'>"
+                                     + "<div class='col-md-12' style='margin-bottom: 5px;'>"
+                                        + "<span style='display: inline-block;'>"
+                                            + "<i class='fa fa-user'></i>" 
+                                            + "<label><b>&nbsp;" +pendingAt + "</b></label>"
+                                         + "</span>" 
+                                         + "<span style='display: inline-block; float:right;'>"
+                                            + "<i class='fa fa-money'></i>" + "<label>&nbsp;" + row.editorTotalAmt + "</label>" 
+                                         + "</span>" 
+                                    + "</div>"
+
+                                    + "<div class='col-md-12' style='margin-bottom: 5px;''>"
+                                        + "<span style='display: inline-block;'>"
+                                            + "<i class='fa fa-plane' aria-hidden='true'></i>" 
+                                            + "<label>&nbsp;" + row.fromLocation + ' - ' + row.toLocation + "</label>"
+                                         + "</span>" 
+                                         + "<span style='display: inline-block; float:right;'>"
+                                            + "<label style='float: right;'>" + row.iternaryType + "</label>"
+                                         + "</span>" 
+                                    + "</div>"
+
+                                    + "<div class='col-md-12' style='margin-bottom: 5px;'>"
+                                        + "<span style='display: inline-block;'>"
+                                            + "<i class='fa fa-calendar' aria-hidden='true'></i>" 
+                                            + "<label><h5>&nbsp;" + row.startDate + ' - ' + row.endDate + "<h5></label>"
+                                         + "</span>" 
+                                    + "</div>" 
+                                + "</div>"
+                             + "</div>"
+                         + "</div>" 
+                     + "</div>" 
+                 + "<br>";
+
+                         j('#voucherHeader').append(data);
+
+        if (row.workflowToBeFollowed == 'D') {
+            if (window.localStorage.getItem("APPLICATION_VERSION") == false || window.localStorage.getItem("versionNumber") > 12.4) {
+
+                var buttonValue =
+                    "<i style='font-size: 12px;color: red;float: left;;margin-top: 5px;' class='fa fa-circle'></i>" + "&nbsp;";
+
+                j('#isEntitlementExceeded_' + record).append(buttonValue);
+
+            }
+
+        }
+
+                     }
+                 }
+
+             });
+
+     });
+ }
+
+ function fetchViewForTravelDetails(headerId) {
+
+     var jsonToPopulateBEDetails = new Object();
+     jsonToPopulateBEDetails["processId"] = '3';
+     jsonToPopulateBEDetails["voucherId"] = headerId;
+     jsonToPopulateBEDetails["employeeId"] = window.localStorage.getItem("EmployeeId");
+
+     j.ajax({
+         url: window.localStorage.getItem("urlPath") + "SyncVoucherDetails",
+         type: 'POST',
+         dataType: 'json',
+         crossDomain: true,
+         data: JSON.stringify(jsonToPopulateBEDetails),
+         success: function(data) {
+             if (data.Status == "Success") {
+                 var voucherDetailArray = data.expenseDetails;
+                 setDetailsForTravelHeader(headerId, voucherDetailArray);
+
+                 requestRunning = false;
+             } else {
+                 successMessage = "Error: Oops something is wrong, Please Contact System Administer";
+                 requestRunning = false;
+             }
+         },
+         error: function(data) {
+             requestRunning = false;
+         }
+     });
+
+ }
+
+
+ function setDetailsForTravelHeader(headerId, voucherDetailArray) {
+
+    var headerBackBtn = defaultPagePath + 'backbtnPage.html';
+    var pageRef = defaultPagePath + 'voucherDetails.html';
+    
+
+    if( !appPageHistory.includes('app/pages/voucherDetails.html')){
+            appPageHistory.push(pageRef);
+    }
+
+    j(document).ready(function() {
+        j('#mainHeader').load(headerBackBtn);
+        j('#mainContainer').load(pageRef, function() {
+          fetchTravelDetails(headerId,voucherDetailArray);
+        });
+     });
+ }
+
+ function fetchTravelDetails(headerId, voucherDetailArray) {
+
+     try {
+
+         var detailBodyLines = "";
+
+         if (voucherDetailArray != null && voucherDetailArray.length > 0) {
+             for (var i = 0; i < voucherDetailArray.length; i++) {
+                 var detailArray = new Array();
+                 detailArray = voucherDetailArray[i];
+
+                 var accHead = detailArray.accHead;
+                 var accCode = detailArray.accCode;
+                  var cityTownName = detailArray.cityTownName;
+
+
+                 if (accHead.length > 15) {
+                     accHead = accHead.substr(0, 12) + "..";
+                 }
+                 if (accCode.length > 15) {
+                     accCode = accCode.substr(0, 12) + "..";
+                 }
+
+                     detailBody = "<tr>"+ "<td>" + accHead + "</td>" 
+                                        + "<td>" + detailArray.cityTownName + "</td>"
+                                        + "<td>"+detailArray.noOfDays+"</td>"
+                                        + "<td>"+detailArray.approxAmt+"</td>"
+                                        + "<td class='accCode displayNone'>" + accCode + "</td>" 
+                                        + "<td  class='travelExpDetailId displayNone'>"+detailArray.travelExpDetailId+"</td>" 
+                                        + "</tr>"
+
+                 detailBodyLines = detailBodyLines + detailBody;
+             }
+         }
+
+         setTravelHeaderToDetail(headerId, voucherDetailArray, detailBodyLines)
+
+     } catch (e) {
+         console.log(e);
+     }
+
+ }
+
+function setTravelHeaderToDetail(headerId, voucherDetailArray, detailBodyLines) {
+
+     mydb.transaction(function(t) {
+
+         t.executeSql('SELECT * FROM TravelHeader where headerId = ' + headerId, [],
+             function(transaction, result) {``
+                 if (result != null && result.rows != null) {
+                     j('#voucherDetailsTab').empty();
+                     for (record = 0; record < result.rows.length; record++) {
+                         var row = result.rows.item(record);
+                        
+                             var statusForEdit = "";
+                             var pendingAt = "";
+
+                         if (row.vocherStatus == 'R') {
+                             statusForEdit = 'Sent Back';
+                         } else if (row.vocherStatus == 'P') {
+                             statusForEdit = 'Pending';
+                         } else if (row.vocherStatus == 'F') {
+                             statusForEdit = 'Paid';
+                         }  else if (row.vocherStatus == 'U') {
+                             statusForEdit = 'Unpaid';
+                             pendingAt = 'Payment Desk'
+                         }  else if (row.vocherStatus == 'D') {
+                             statusForEdit = 'Draft';
+                         }  else if (row.vocherStatus == 'Q') {
+                             statusForEdit = 'In Queries';
+                         }
+
+                        if(enableDivBasedOnStatus == "A"){
+                            pendingAt = row.creatorName;
+                         }
+
+                          if(pendingAt == ""){
+                            pendingAt = row.currentOwnerName;
+                        }
+
+
+                         var buttonValue = "";
+
+                         var defaultCurrency  = window.localStorage.getItem("DefaultCurrencyName");
+
+                         var data =
+
+                            "<div class='col-md-12'>" 
+                                + "<div class='card shadow'>" 
+                                    + "<div class='card-header' style='font-size: 15px;color: #076473;'>" 
+                                        + "<span style='display: inline;' id = 'isEntitlementExceeded_"+record+"'></span>"
+                                         + row.voucherNumber 
+                                            +"<h7 style='display: inline;'>&nbsp("+defaultCurrency+")</h7>"
+                             + "<label style='color:darkorange;float: right;'>" + statusForEdit + "</label></div>" 
+
+                             + "<div class='card-body' style='padding: 10px;''>" 
+                                + "<div class='row'>"
+                                     + "<div class='col-md-12' style='margin-bottom: 5px;'>"
+                                        + "<span style='display: inline-block;'>"
+                                            + "<i class='fa fa-user'></i>" 
+                                            + "<label style='font-weight: 500;'>&nbsp;" +pendingAt + "</label>"
+                                         + "</span>" 
+                                         + "<span style='display: inline-block; float:right;'>"
+                                            + "<i class='fa fa-money'></i>" + "<label style='font-weight: 500;'>&nbsp;" + row.editorTotalAmt + "</label>" 
+                                         + "</span>" 
+                                    + "</div>"
+
+                                    + "<div class='col-md-12' style='margin-bottom: 5px;''>"
+                                        + "<span style='display: inline-block;'>"
+                                            + "<i class='fa fa-plane' aria-hidden='true'></i>" 
+                                            + "<label style='font-weight: 500;'>&nbsp;" + row.fromLocation + ' - ' + row.toLocation + "</label>"
+                                         + "</span>" 
+                                         + "<span style='display: inline-block; float:right;'>"
+                                            + "<label style='float: right; font-weight: 500;'>" + row.iternaryType + "</label>"
+                                         + "</span>" 
+                                    + "</div>"
+
+                                     + "<div class='col-md-12'>"
+                                         + "<span style='display: inline-block;'>"
+                                            + "<label style='float: right; font-weight: 500;'>" + row.travelType + "</label>"
+                                         + "</span>" 
+                                    + "</div>" 
+                                    + "<div class='col-md-12' style='margin-bottom: 5%;'>"
+                                        + "<span style='display: inline-block;'>"
+                                            + "<i class='fa fa-calendar' aria-hidden='true'></i>" 
+                                            + "<label style='font-weight: 500;'><h5>&nbsp;" + row.startDate + ' - ' + row.endDate + "</h5></label>"
+                                         + "</span>"
+                                         + "</div>"
+                                    
+                         + "<div class='card-footer' id = 'buttonsAttached' style='padding-bottom:20px;'>" 
+
+                         + "<div class='table-responsive'>" 
+                         + "<table id = 'detailTab' class='table table-bordered tableFixHead' width='100%' cellspacing='0'>" 
+                         + "<thead>" 
+                         + "<tr role='row'>" 
+                         + "<th class='sorting' tabindex='0' aria-controls='dataTable' rowspan='1' colspan='1' aria-label=''>Exp Head" + "</th>" 
+                         + "<th class='sorting' tabindex='0' aria-controls='dataTable' rowspan='1' colspan='1' aria-label=''>CityTown" + "</th>" 
+                         + "<th class='sorting' tabindex='0' aria-controls='dataTable' rowspan='1' colspan='1' aria-label=''>Unit" + "</th>" 
+                         + "<th class='sorting' tabindex='0' aria-controls='dataTable' rowspan='1' colspan='1' aria-label=''>Amt" + "</th>" 
+                         + "</tr>" 
+                         + "</thead>" 
+                         + "<tbody id='detailBodyId'>" + detailBodyLines + "</tbody>" 
+                         + "</table>" 
+                         + "</div>"
+                         + "</div>"
+
+
+                         + "<div id = 'policies' style='display: none;' onclick='fetchException("+headerId+","+"3)'>"
+                         + "<td><i class='fa fa-plus-square-o' style='font-size:18px;color:#337ab7;padding: 6px;'> Policies</i></td>"
+                         + "</div>"
+
+                         + "<div id = 'exceptionMsg' style='padding-left: 5px; padding-right:5px;'>"
+                         + "</div>"
+                        
+                         +"</div>"
+                         + "</div>" 
+                     + "</div>" 
+                 + "<br>";
+
+                         j('#voucherDetailsTab').append(data);
+
+
+                            if (window.localStorage.getItem("APPLICATION_VERSION") == false || window.localStorage.getItem("versionNumber") > 12.4) {
+                                if (row.workflowToBeFollowed == 'D') {
+                                    var buttonValue =
+                                        "<i style='font-size: 12px;color: red;float: left;margin-top: 5px;' class='fa fa-circle'></i>" + "&nbsp;";
+
+                                    j('#isEntitlementExceeded_' + record).append(buttonValue);
+
+                                    document.getElementById('policies').style.display = "block";
+
+                                }
+
+                            }
+
+                         if (statusForEdit == 'Sent Back') {
+
+                             buttonValue =   
+                                            "<br>"
+                                            +"<div style='margin-left: 2%;'><label>Sent Back Comments :</label>"
+                                            +"<br>"
+                                            +"<div style='border: 1px;background-color: #eeeeee;padding: 10px 0 10px 10px;box-sizing: border-box;width: 98%;padding-left: 10;'>"+row.rejectionComments+"</div>"
+                                            +"<div><br>"
+                                          +"<div class='col-md-12' id = 'editButton' style='text-align: center;padding-bottom: 20px;'>"
+                                            /*   + "<button type='submit' class='btn btn-primary' onclick='expPrimaryIdTR()'>Edit</button>&nbsp;" */  
+                                          +"<button type='submit' id = 'sendForApproveBtn' class='btn btn-primary' onclick='approveTRVoucher(" + row.headerId + ")'>Send For Approval</button>&nbsp;" + "</div>";
+
+                             j('#buttonsAttached').append(buttonValue);
+                         }
+
+                         if (statusForEdit == 'Draft') {
+
+                             buttonValue =  
+                                           "<div class='col-md-12' id = 'editButton' style='text-align: center;padding-bottom: 20px;'>" 
+                                            /* + "<button type='submit' class='btn btn-primary' onclick='expPrimaryIdTR()'>Edit</button>&nbsp;"  */
+                                            +"<button type='submit' id = 'sendForApproveBtn' class='btn btn-primary' onclick='approveTRVoucher(" + row.headerId + ")'>Send For Approval</button>&nbsp;" + "</div>";
+
+                             j('#buttonsAttached').append(buttonValue);
+                         }
+
+                         if(enableDivBasedOnStatus == 'A'){
+                             buttonValue =  "<div class='col-md-12' style='text-align: center; padding-bottom: 20px;'>"
+                                            +"<button type='submit' id = 'approveBtn' class='btn btn-primary' onclick='approveTRVoucher("+row.headerId+")'>Approve</button>&nbsp;"
+                                            +"<button type='button' id = 'RejectedBtn' class='btn btn-primary' data-toggle='modal' data-id="+row.headerId+"_3"+" data-target='#myModal'>Send Back</button>"
+                                            +"</div>";
+
+                             j('#buttonsAttached').append(buttonValue);
+
+                        }
+
+                        if(row.vocherStatus == 'R' || row.vocherStatus == 'D'){
+
+                            j("#detailBodyId tr").click(function() {
+                                 if (j(this).hasClass("selected")) {
+                                     j(this).removeClass('selected');
+                                     
+                                 } else {
+                                     j(this).addClass('selected');
+                                     
+                                 }
+                            });
+                        }
+
+                           if(statusForEdit =='In Queries' && enableDivBasedOnStatus == 'A'){
+                             document.getElementById("RejectedBtn").disabled =true;
+                            document.getElementById("approveBtn").disabled =true;
+                            }
+
+                        var empId = window.localStorage.getItem("EmployeeId");
+
+                        var len = appPageHistory.length;
+                        var pg = appPageHistory[len - 3];
+
+                        if(statusForEdit == 'In Queries'  && (empId==row.createdById) && pg !='app/pages/TRTSAllViews.html'){
+                            
+                            var ids = row.headerId+'&'+row.queryId;
+                       
+                        if(row.queryAns == "" || row.queryAns=="undefined" ||row.queryAns=="Null"){
+                                buttonValue =   
+                                            "<br>"
+                                            +"<div style='margin-left: 2%;'><label>Query Asked To Me:</label>"
+                                            +"<br>"
+                                            +"<div style='border: 1px;background-color: #eeeeee;padding: 10px 0 10px 10px;box-sizing: border-box;width: 98%;padding-left: 10;'>"+row.query+"</div>"
+                                            +"<div><br>"
+                                            +"<div class='col-md-12' style='text-align: center;'>"
+                                            +"<button type='button' id = 'QueryTrBtn' class='btn btn-primary' data-toggle='modal' data-id="+ids+" data-target='#myModalTrQuery'>Reply</button>"
+                                            +"</div>"
+                                            ;
+                             }else{
+                                 buttonValue = 
+                                            "</br>" 
+                                            +"<div style='margin-left: 2%;'><label>Query Asked To Me:</label>"
+                                            +"<br>"
+                                            +"<div style='border: 1px;background-color: #eeeeee;padding: 10px 0 10px 10px;box-sizing: border-box;width: 98%;padding-left: 10;'>"+row.query+"</div><br>"
+                                            +"<div style='margin-right: 2%;'><label>Reply:</label>"
+                                            +"<div style='border: 1px;background-color: #eeeeee;padding: 10px 0 10px 10px;box-sizing: border-box;width: 98%;padding-left: 10;'>"+row.queryAns+"</div>"
+                                            +"<div><br>"
+                                            +"<div class='col-md-12' style='text-align: center;'>"
+                                            +"<button type='button' id = 'QueryTrBtn' class='btn btn-primary' data-toggle='modal' data-id="+ids+" data-target='#myModalTrQuery'>Edit</button>"
+                                            +"</div>"
+                                            ;
+                             }
+
+                             j('#buttonsAttached').append(buttonValue);
+                            
+                            }
+
+                     }
+                 }
+
+             });
+     });
+
+ }
+
+  // *************************************** Travel Request Header / Details -- End *****************************************************//
+
+// ---------------------------------------------------  Profile -- End -----------------------------------------------------  //
+function updateProfilePicture(imageData){
+     try {
+         var empId = window.localStorage.getItem("EmployeeId");
+
+         if (mydb) {
+
+             if (imageData != "") {
+
+                 var jsonToUpdateProfileImg = new Object();
+                 jsonToUpdateProfileImg["employeeId"] = empId;
+                 jsonToUpdateProfileImg["profileData"] = imageData;
+
+                 mydb.transaction(function(t) {
+                     t.executeSql("UPDATE profileMst set profileAttachment ='"+imageData+ "'  where empId = " + empId + ";");
+                     updateEmpProfile(jsonToUpdateProfileImg);
+                 });
+             }
+         } else {
+             alert(window.lang.translate('Database not found, your browser does not support web sql!'));
+         }
+     } catch (e) {
+         console.log(e);
+     }
+}
+
+ function updateEmpProfile(jsonToUpdateProfileImg) {
+
+     j.ajax({
+         url: window.localStorage.getItem("urlPath") + "UpdateProfilePicture",
+         type: 'POST',
+         dataType: 'json',
+         crossDomain: true,
+         data: JSON.stringify(jsonToUpdateProfileImg),
+         success: function(data) {
+            
+             if (data.Status == "Success") {
+                alert("Profile Picture uploaded successfully");
+
+                 requestRunning = false;
+             } else {
+                 successMessage = "Error: Oops something is wrong, Please Contact System Administer";
+                 requestRunning = false;
+             }
+         },
+         error: function(data) {
+             requestRunning = false;
+         }
+     });
+
+ }
+
+ function displayEmpAdvForTS() {
+    var headerBackBtn = defaultPagePath + 'backbtnPage.html';
+    var pageRef = defaultPagePath + "travelSettlementTable.html";
+    j(document).ready(function() {
+        j('#mainHeader').load(headerBackBtn);
+    });
+    document.getElementById('TS').style.display = "none";
+    document.getElementById('EA').style.display = "";
+
+    if(document.getElementById('helpimage') != null){
+        document.getElementById('helpimage').style.display = "none";
+    }
+    
+    appPageHistory.push(pageRef);
+
+}
+
+function submitTSWithEA(){
+
+            var jsonTravelSettlementDetailsArr = [];
+        var travelSettleExpDetailsArr = [];
+        minExpenseClaimDate = new Object;
+         if(validateTravelSettelment() == true){
+            if (j("#source tr.selected").hasClass("selected")) {
+            j("#source tr.selected").each(function(index, row) {
+                if (requestRunning) {
+                    return;
+                }
+                var travelSettleDetailId = j(this).find('td.tsExpId').text();
+                var jsonFindTS = new Object();
+                var expDate = j(this).find('td.expDate1').text();
+
+                var expenseDate = expDate;
+
+                jsonFindTS["expenseDate"] = expenseDate;
+                jsonFindTS["travelRequestId"] = j(this).find('td.travelRequestId').text();
+                jsonFindTS["accountCodeId"] = j(this).find('td.accountCodeId').text();
+                jsonFindTS["expenseId"] = j(this).find('td.expNameId').text();
+                jsonFindTS["ExpenseName"] = j(this).find('td.expName').text();
+                jsonFindTS["travelModeId"] = j(this).find('td.modeId').text();
+                jsonFindTS["travelCategoryId"] = j(this).find('td.categoryId').text();
+                jsonFindTS["cityTownId"] = j(this).find('td.fromcityTownId').text();
+                jsonFindTS["isModeCategory"] = j(this).find('td.isModeCategory').text();
+                jsonFindTS["narration"] = j(this).find('td.expNarration1').text();
+                jsonFindTS["units"] = j(this).find('td.expUnit').text();
+                jsonFindTS["amount"] = j(this).find('td.expAmt1').text();
+                jsonFindTS["currencyId"] = j(this).find('td.currencyId').text();
+                jsonFindTS["perUnitStatus"] = j(this).find('td.isEntitlementExceeded').text();
+                var dataURL = j(this).find('td.tsExpAttachment').text();
+                //For IOS image save
+                var data = dataURL.replace(/data:image\/(png|jpg|jpeg);base64,/, '');
+
+                //For Android image save
+                //var data = dataURL.replace(/data:base64,/, '');
+
+                jsonFindTS["imageAttach"] = data;
+
+                jsonTravelSettlementDetailsArr.push(jsonFindTS);
+
+                travelSettleExpDetailsArr.push(travelSettleDetailId);
+            });
+                if (travelSettleExpDetailsArr.length > 0) {
+                saveTravelSettle(jsonTravelSettlementDetailsArr, travelSettleExpDetailsArr,"N");
+                }
+                } else {
+                requestRunning = false;
+                alert(window.lang.translate('Tap and select Expenses to synch with server.'));
+                }
+        }else{
+            if (exceptionMessage == '') {
+                exceptionMessage = "Selected expenses should be mapped under Single Travel Request."
+                requestRunning = false;
+                alert(exceptionMessage);
+            }
+        }
+}
+
+ function validateTravelSettelment() {
+     var map = new Map();
+
+     if (j("#source tr.selected").hasClass("selected")) {
+         j("#source tr.selected").each(function(index, row) {
+
+             var currentTravelReqID = j(this).find('td.travelRequestId').text();
+
+             if (map.has(currentTravelReqID)) {
+                 var value = map.get(currentTravelReqID);
+
+                 map.set(currentTravelReqID, currentTravelReqID);
+             } else {
+                 map.set(currentTravelReqID, currentTravelReqID);
+             }
+
+         });
+     }
+     if (map.size == 1) {
+         return true;
+     } else {
+         return false;
+     }
+ }
+
+ /********************    Kunal Coding For Approve Voucher start   *************************/
+
+function fetchViewForTravelApproveVouchersHeader() {
+     
+     
+     mydb.transaction(function(t) {
+         t.executeSql('SELECT * FROM TravelHeader;', [],
+             function(transaction, result) {
+                 if (result != null && result.rows != null) {
+                     j('#voucherHeader').empty();
+                     for (record = 0; record < result.rows.length; record++) {
+                         var row = result.rows.item(record);
+
+                         var pendingAt = "";
+                         var statusForEdit = "";
+
+                         if (row.vocherStatus == 'R') {
+                             statusForEdit = 'Sent Back';
+                         } else if (row.vocherStatus == 'P') {
+                             statusForEdit = 'Pending';
+                         } else if (row.vocherStatus == 'F') {
+                             statusForEdit = 'Paid';
+                         }  else if (row.vocherStatus == 'U') {
+                             statusForEdit = 'Unpaid';
+                             pendingAt = 'Payment Desk'
+                         }  else if(row.vocherStatus == 'D'){
+                             statusForEdit = 'Draft';
+                         }  else if(row.vocherStatus == 'Q'){
+                             statusForEdit = 'In Queries';
+                         }
+
+                         if(enableDivBasedOnStatus == "A"){
+                            pendingAt = row.creatorName;
+                         }
+
+                        if(pendingAt == ""){
+                            pendingAt = row.currentOwnerName;
+                        }
+
+                          var travelType = row.travelType;
+
+                        if (travelType.length > 12) {
+                            travelType = travelType.substr(0, 11) + "..";
+                        }
+
+                         var defaultCurrency  = window.localStorage.getItem("DefaultCurrencyName");
+
+                         var data =
+                             "<div class='col-md-12' onclick='fetchViewForTravelDetails(" + row.headerId + ");'>" 
+                                + "<div class='card shadow'>" 
+                                    + "<div class='card-header' style='font-size: 15px;color: #076473;'>"
+                                    + "<span style='display: inline;' id = 'isEntitlementExceeded_"+record+"'></span>"
+                                         + row.voucherNumber 
+                                            +"<h7 style='display: inline;'>&nbsp("+defaultCurrency+")</h7>"
+                             + "<label style = 'color:darkorange;float: right;'>" + statusForEdit + "</label></div>" 
+                             + "<div class='card-body' style='padding: 10px;''>" 
+                                + "<div class='row'>"
+                                     + "<div class='col-md-12' style='margin-bottom: 5px;'>"
+                                        + "<span style='display: inline-block;'>"
+                                            + "<i class='fa fa-user'></i>" 
+                                            + "<label><b>&nbsp;" +pendingAt + "</b></label>"
+                                         + "</span>" 
+                                         + "<span style='display: inline-block; float:right;'>"
+                                            + "<i class='fa fa-money'></i>" + "<label>&nbsp;" + row.editorTotalAmt + "</label>" 
+                                         + "</span>" 
+                                    + "</div>"
+
+                                    + "<div class='col-md-12' style='margin-bottom: 5px;''>"
+                                        + "<span style='display: inline-block;'>"
+                                            + "<i class='fa fa-plane' aria-hidden='true'></i>" 
+                                            + "<label>&nbsp;" + row.fromLocation + ' - ' + row.toLocation + "</label>"
+                                         + "</span>" 
+                                         + "<span style='display: inline-block; float:right;'>"
+                                            + "<label style='float: right;'>" + row.iternaryType + "</label>"
+                                         + "</span>" 
+                                    + "</div>"
+
+                                    + "<div class='col-md-12' style='margin-bottom: 5px;'>"
+                                        + "<span style='display: inline-block;'>"
+                                            + "<i class='fa fa-calendar' aria-hidden='true'></i>" 
+                                            + "<label><h5>&nbsp;" + row.startDate + ' - ' + row.endDate + "<h5></label>"
+                                         + "</span>" 
+                                    + "</div>" 
+                                + "</div>"
+                             + "</div>"
+                         + "</div>" 
+                     + "</div>" 
+                 + "<br>";
+
+                         j('#trVoucherHeader').append(data);
+
+                         if (row.workflowToBeFollowed == 'D') {
+                            if (window.localStorage.getItem("APPLICATION_VERSION") == false || window.localStorage.getItem("versionNumber") > 12.4) {
+
+                                var buttonValue =
+                                    "<i style='font-size: 12px;color: red;float: left;;margin-top: 5px;' class='fa fa-circle'></i>" + "&nbsp;";
+
+                                j('#isEntitlementExceeded_' + record).append(buttonValue);
+
+                            }
+
+                        }
+
+                     }
+                 }
+
+             });
+
+     });
+ }
+
+
+ function approveTRVoucher(travelRequestId){
+
+    var headerBackBtn = defaultPagePath + 'backbtnPage.html';
+    var pageRefSuccess = defaultPagePath + 'success.html';
+
+    var jsonToBeSendForApproval = new Object();
+    jsonToBeSendForApproval["processId"] = '3';
+    jsonToBeSendForApproval["headerList"] = travelRequestId;
+    jsonToBeSendForApproval["employeeId"] = window.localStorage.getItem("EmployeeId");
+    jsonToBeSendForApproval["buttonStatus"] = "A";
+    jsonToBeSendForApproval["rejectionComment"] = "";
+
+     
+    j('#loading_Cat').show();
+
+    j.ajax({
+        url: window.localStorage.getItem("urlPath") + "MobileApproveRejectService",
+         type: 'POST',
+         dataType: 'json',
+         crossDomain: true,
+         data: JSON.stringify(jsonToBeSendForApproval),
+         success: function(data) {
+
+             if (data.Status == "Success") {
+                j('#loading_Cat').hide();
+                var travelRequestArray = data.travelRequestDetails;
+
+                    mydb.transaction(function(t) {
+                        if (travelRequestArray != null && travelRequestArray.length > 0) {
+                            for (var i = 0; i < travelRequestArray.length; i++) {
+                                var headArray = new Array();
+                                headArray = travelRequestArray[i];
+                                //console.log("headArray : "+headArray);
+
+                                var approvalMsg = headArray.message;
+                                successMessage = approvalMsg;
+
+                            }
+                        }
+
+                        if(successMessage != null && successMessage != ""){
+                            j('#loading_Cat').hide();
+                            j('#mainHeader').load(headerBackBtn);
+                            j('#mainContainer').load(pageRefSuccess);
+                        }
+                        requestRunning = false;             
+                    });
+
+             } else {
+                 j('#loading_Cat').hide();
+                 successMessage = "Error: Oops something is wrong, Please Contact System Administer";
+                 requestRunning = false;
+             }
+         },
+         error: function(data) {
+            j('#loading_Cat').hide();
+            successMessage = "Error: Oops something is wrong, Please Contact System Administer";
+            requestRunning = false;
+         }
+     });
+
+ }
+
+ function fetchCountForTravelMyApproval(statusOfVoucher) {
+
+     var jsonSentToSync = new Object();
+     jsonSentToSync["employeeId"] = window.localStorage.getItem("EmployeeId");
+     jsonSentToSync["processId"] = "";
+     jsonSentToSync["vocherStatus"] = statusOfVoucher;
+
+     j.ajax({
+         url: window.localStorage.getItem("urlPath") + "FetchCount",
+         type: 'POST',
+         dataType: 'json',
+         crossDomain: true,
+         data: JSON.stringify(jsonSentToSync),
+         success: function(data) {
+
+             if (data.Status == "Success") {
+
+                 var countForVouchers = data.VoucherCount.toString();
+
+
+                if(statusOfVoucher == 'A' && document.getElementById('travelCount') != null){
+                 document.getElementById("travelCount").innerHTML = countForVouchers;
+                }
+
+                requestRunning = false;
+             } else {
+                 requestRunning = false;
+             }
+         },
+         error: function(data) {
+             requestRunning = false;
+         }
+     });
+
+ }
+
+ /********************    Kunal Coding For Approve Voucher end   *************************/
+
+/**********************  Tejashree  Start ************************/
+
+
+   function displayQueryPage(statusOfVoucher) {
+     if (statusOfVoucher == "SUCCESS_NO_DATA") {
+              var data = "<div style='text-align: center;'>"
+                         +"<p  style='text-align: center;'><img src = 'images/noVoucher1.png'></p>"
+                         +"<h4><b style='color: darkgrey;'>No expense available.</b></h4>"
+                         +"<div>";
+              j("#beQueryData").append(data);
+
+     } else {
+                fetchViewForQueryVouchersHeader();
+     }
+ }
+
+
+ function fetchViewForQueryVouchersHeader() {
+
+     mydb.transaction(function(t) {
+         t.executeSql('SELECT * FROM BEHeader;', [],
+             function(transaction, result) {
+                 if (result != null && result.rows != null) {
+                     j('#beQueryData').empty();
+                     for (record = 0; record < result.rows.length; record++) {
+                         var row = result.rows.item(record);
+
+                         var statusForEdit = "";
+                         var pendingAt = "";
+
+                         if (row.vocherStatus == 'R') {
+                             statusForEdit = 'Sent Back';
+                         } else if (row.vocherStatus == 'P') {
+                             statusForEdit = 'Pending';
+                         } else if (row.vocherStatus == 'F') {
+                             statusForEdit = 'Paid';
+                         }  else if (row.vocherStatus == 'U') {
+                             statusForEdit = 'Unpaid';
+                             pendingAt = 'Payment Desk'
+                         }  else if(row.vocherStatus == 'D'){
+                             statusForEdit = 'Draft';
+                         }  else if(row.vocherStatus == 'Q'){
+                             statusForEdit = 'In Queries';
+                         }
+
+                         if(enableDivBasedOnStatus == "A"){
+                            pendingAt = row.creatorName;
+                         }
+
+                        if(pendingAt == ""){
+                            pendingAt = row.currentOwnerName;
+                        }
+
+
+                         var defaultCurrency  = window.localStorage.getItem("DefaultCurrencyName");
+
+                         var data =
+                             "<div class='col-md-12' onclick='fetchViewForVoucherDetails(" + row.busExpHeaderId + ");'>" 
+                             + "<div class='card shadow'>" 
+                             + "<div class='card-header' style='font-size: 15px;color: #076473;'>"
+                             + "<span style='display: inline;' id = 'isEntitlementExceeded_"+record+"'></span>"
+                             + row.busExpNumber 
+                                + "<h7 style='display: inline;'>&nbsp("+defaultCurrency+")</h7>"
+                                + "<label style = 'color:darkorange;float: right;'>" + statusForEdit + "</label></div>" 
+                                 + "<div class='card-body' style='padding: 10px;'>" 
+                                        + "<div class='row'>" 
+                                            + "<div class='col-md-12' style='margin-bottom: 5px;'>"
+                                                + "<label>" + row.accHeadDesc + "</label>"    
+                                            + "</div>" 
+                                        + "</div>" 
+                                        + "<div class='row'>"
+                                            + "<div class='col-md-12' style='margin-bottom: 5px;'>"
+                                                + "<i class='fa fa-user'></i>" 
+                                                + "<label style='font-weight: 500;'>&nbsp;" +pendingAt + "</label>"
+                                                + "<span style='display: inline; float: right;'>"
+                                                    + "<i class='fa fa-money'></i>" 
+                                                    + "<label>&nbsp;" 
+                                                    + row.editorTotalAmt 
+                                                    + "</label>" 
+                                                + "</span>"
+                                            + "</div>" 
+                                         + "</div>" 
+                                         + "<div class='row'>" 
+                                             + "<div class='col-md-12' style='margin-bottom: 5px;'>"
+                                                + "<span style='display: inline-block;'>"
+                                                    + "<i class='fa fa-calendar' aria-hidden='true'></i>" 
+                                                    + "<label><h5>&nbsp;" + row.startDate + ' - ' + row.endDate + "<h5></label>"
+                                                 + "</span>" 
+                                            + "</div>"
+                                         + "</div>" 
+                                 + "</div>" 
+                              + "</div>" 
+                            + "<br>";
+
+                         j('#beQueryData').append(data);
+
+
+        if (row.workflowToBeFollowed == 'D') {
+            if (window.localStorage.getItem("APPLICATION_VERSION") == false || window.localStorage.getItem("versionNumber") > 12.4) {
+
+                var buttonValue =
+                    "<i style='font-size: 12px;color: red;float: left;;margin-top: 5px;' class='fa fa-circle'></i>" + "&nbsp;";
+
+                j('#isEntitlementExceeded_' + record).append(buttonValue);
+
+            }
+
+        }
+
+                     }
+                 }
+
+             });
+
+     });
+ }
+
+//********************************Query TR Answer COde Added****************************************************//
+
+function queryTrAnwser(){
+    $('.modal-backdrop').remove();
+    var headerBackBtn = defaultPagePath + 'backbtnPage.html';
+    var pageRefSuccess = defaultPagePath + 'success.html';
+    var querTRId = j("#QueryTrBtn").data('id');
+    var trQueryId = querTRId.split("&");
+    var travelrequestId = trQueryId[0];
+    var queryId = trQueryId[1];
+    var comment = j.trim(j("#queryTrRply").val());
+    var file = "";
+
+    if(comment != ""){
+
+        var jsonToTrSendForQuery = new Object();
+        jsonToTrSendForQuery["processId"] = '3';
+        jsonToTrSendForQuery["travelrequestId"] = travelrequestId;
+        jsonToTrSendForQuery["queryId"] = queryId;
+        jsonToTrSendForQuery["employeeId"] = window.localStorage.getItem("EmployeeId");
+        jsonToTrSendForQuery["queryAnswer"] = comment;
+
+         if (fileTempGalleryTRQ == undefined || fileTempGalleryTRQ == "") {
+
+         } else {
+             file = fileTempGalleryTRQ;
+         }
+
+         if (fileTempCameraTRQ == undefined || fileTempCameraTRQ == "") {
+
+         } else {
+             file = fileTempCameraTRQ;
+         }
+
+         if(file != ""){
+            file = file.replace(/data:image\/(png|jpg|jpeg);base64,/, '');
+         }
+
+        jsonToTrSendForQuery["imageData"] = file;
+
+
+        j('#loading_Cat').show();
+
+        j.ajax({
+            url: window.localStorage.getItem("urlPath") + "SaveQueryFromMobile",
+            type: 'POST',
+            dataType: 'json',
+            crossDomain: true,
+            data: JSON.stringify(jsonToTrSendForQuery),
+            success: function(data) {
+              
+                if (data.Status == "Success") { 
+                   
+                     successMessage = "Query Answered Successfully";
+                     
+                     requestRunning = false;
+                     resetImageData();
+                     j('#loading_Cat').hide();
+                     j('#mainHeader').load(headerBackBtn);
+                     j('#mainContainer').load(pageRefSuccess);
+                } else {
+                     j('#loading_Cat').hide();
+                    successMessage = "Error: Oops something is wrong, Please Contact System Administer";
+                    requestRunning = false;
+                }
+            },
+            error: function(data) {
+                 j('#loading_Cat').hide();
+                requestRunning = false;
+            }
+        });
+    }else{
+        alert("Please enter Query Answer");
+    }
+}
+
+//********************************Query TS Answer COde Added****************************************************//
+
+function queryTsAnwser(){
+    $('.modal-backdrop').remove();
+    var headerBackBtn = defaultPagePath + 'backbtnPage.html';
+    var pageRefSuccess = defaultPagePath + 'success.html';
+    var querTSId = j("#QueryTsBtn").data('id');
+    var tsQueryId = querTSId.split("&");
+    var travelSettleId = tsQueryId[0];
+    var queryId = tsQueryId[1];
+    var comment = j.trim(j("#queryTsRply").val());
+    var file = "";
+
+    if(comment != ""){
+
+        var jsonToTsSendForQuery = new Object();
+        jsonToTsSendForQuery["processId"] = '5';
+        jsonToTsSendForQuery["travelSettleId"] = travelSettleId;
+        jsonToTsSendForQuery["queryId"] = queryId;
+        jsonToTsSendForQuery["employeeId"] = window.localStorage.getItem("EmployeeId");
+        jsonToTsSendForQuery["queryAnswer"] = comment;
+
+         if (fileTempCameraTSQ == undefined || fileTempCameraTSQ == "") {
+
+         } else {
+             file = fileTempCameraTSQ;
+         }
+
+         if (fileTempGalleryTSQ == undefined || fileTempGalleryTSQ == "") {
+
+         } else {
+             file = fileTempGalleryTSQ;
+         }
+
+         if(file != ""){
+            file = file.replace(/data:image\/(png|jpg|jpeg);base64,/, '');
+         }
+
+        jsonToTsSendForQuery["imageData"] = file;
+
+
+        j('#loading_Cat').show();
+       
+        j.ajax({
+          
+            url: window.localStorage.getItem("urlPath") + "SaveQueryFromMobile",
+            type: 'POST',
+            dataType: 'json',
+            crossDomain: true,
+            data: JSON.stringify(jsonToTsSendForQuery),
+            success: function(data) {
+             
+                if (data.Status == "Success") { 
+                   
+                     successMessage = "Query Answered Successfully";
+                     
+                     requestRunning = false;
+                     resetImageData();
+                     j('#loading_Cat').hide();
+                     j('#mainHeader').load(headerBackBtn);
+                     j('#mainContainer').load(pageRefSuccess);
+                } else {
+                     j('#loading_Cat').hide();
+                    successMessage = "Error: Oops something is wrong, Please Contact System Administer";
+                    requestRunning = false;
+                }
+            },
+            error: function(data) {
+                 j('#loading_Cat').hide();
+                requestRunning = false;
+            }
+        });
+    }else{
+        alert("Please enter Query Answer");
+    }
+}
+
+  function displayQueryVoucherPage(statusOfVoucher) {
+     if (statusOfVoucher == "SUCCESS_NO_DATA") {
+        j('#trQueryData').empty();
+              var data = "<div style='text-align: center;'>"
+                         +"<p  style='text-align: center;'><img src = 'images/noVoucher1.png'></p>"
+                         +"<h4><b style='color: darkgrey;'>No expense available.</b></h4>"
+                         +"<div>";
+              j("#trQueryData").append(data);
+
+     } else {
+                fetchViewForQueryTravelVouchersHeader();
+     }
+
+ }
+
+function fetchViewForQueryTravelVouchersHeader() {
+     mydb.transaction(function(t) {
+         t.executeSql('SELECT * FROM TravelHeader;', [],
+             function(transaction, result) {
+                 if (result != null && result.rows != null) {
+                     j('#trQueryData').empty();
+                     for (record = 0; record < result.rows.length; record++) {
+                         var row = result.rows.item(record);
+
+                        var statusForEdit = "";
+                        var pendingAt = "";
+
+                         if (row.vocherStatus == 'R') {
+                             statusForEdit = 'Sent Back';
+                         } else if (row.vocherStatus == 'P') {
+                             statusForEdit = 'Pending';
+                         } else if (row.vocherStatus == 'F') {
+                             statusForEdit = 'Paid';
+                         }  else if (row.vocherStatus == 'U') {
+                             statusForEdit = 'Unpaid';
+                             pendingAt = 'Payment Desk'
+                         }  else if(row.vocherStatus == 'D'){
+                             statusForEdit = 'Draft';
+                         }  else if(row.vocherStatus == 'Q'){
+                             statusForEdit = 'In Queries';
+                         }
+
+                         if(enableDivBasedOnStatus == "A"){
+                            pendingAt = row.creatorName;
+                         }
+
+                        if(pendingAt == ""){
+                            pendingAt = row.currentOwnerName;
+                        }
+
+                          var travelType = row.travelType;
+
+                        if (travelType.length > 12) {
+                            travelType = travelType.substr(0, 11) + "..";
+                        }
+
+                         var defaultCurrency  = window.localStorage.getItem("DefaultCurrencyName");
+
+                         var data =
+                             "<div class='col-md-12' onclick='fetchViewForTravelDetails(" + row.headerId + ");'>" 
+                                + "<div class='card shadow'>" 
+                                    + "<div class='card-header' style='font-size: 15px;color: #076473;'>"
+                                    + "<span style='display: inline;' id = 'trEntitlementExceeded_"+record+"'></span>"
+                                         + row.voucherNumber 
+                                            +"<h7 style='display: inline;'>&nbsp("+defaultCurrency+")</h7>"
+                             + "<label style = 'color:darkorange;float: right;'>" + statusForEdit + "</label></div>" 
+                             + "<div class='card-body' style='padding: 10px;''>" 
+                                + "<div class='row'>"
+                                     + "<div class='col-md-12' style='margin-bottom: 5px;'>"
+                                        + "<span style='display: inline-block;'>"
+                                            + "<i class='fa fa-user'></i>" 
+                                            + "<label><b>&nbsp;" +pendingAt + "</b></label>"
+                                         + "</span>" 
+                                         + "<span style='display: inline-block; float:right;'>"
+                                            + "<i class='fa fa-money'></i>" + "<label>&nbsp;" + row.editorTotalAmt + "</label>" 
+                                         + "</span>" 
+                                    + "</div>"
+
+                                    + "<div class='col-md-12' style='margin-bottom: 5px;''>"
+                                        + "<span style='display: inline-block;'>"
+                                            + "<i class='fa fa-plane' aria-hidden='true'></i>" 
+                                            + "<label>&nbsp;" + row.fromLocation + ' - ' + row.toLocation + "</label>"
+                                         + "</span>" 
+                                         + "<span style='display: inline-block; float:right;'>"
+                                            + "<label style='float: right;'>" + row.iternaryType + "</label>"
+                                         + "</span>" 
+                                    + "</div>"
+
+                                    + "<div class='col-md-12' style='margin-bottom: 5px;'>"
+                                        + "<span style='display: inline-block;'>"
+                                            + "<i class='fa fa-calendar' aria-hidden='true'></i>" 
+                                            + "<label><h5>&nbsp;" + row.startDate + ' - ' + row.endDate + "<h5></label>"
+                                         + "</span>" 
+                                    + "</div>" 
+                                + "</div>"
+                             + "</div>"
+                         + "</div>" 
+                     + "</div>" 
+                 + "<br>";
+                    
+                         j('#trQueryData').append(data);
+
+                if (row.workflowToBeFollowed == 'D') {
+                    if (window.localStorage.getItem("APPLICATION_VERSION") == false || window.localStorage.getItem("versionNumber") > 12.4) {
+
+                        var buttonValue =
+                            "<i style='font-size: 12px;color: red;float: left;;margin-top: 5px;' class='fa fa-circle'></i>" + "&nbsp;";
+
+                        j('#trEntitlementExceeded_'+record).append(buttonValue);
+
+                    }
+
+                }
+
+                     }
+                 }
+
+             });
+
+     });
+ }
+
+function fetchException(headerId,processId){
+  var headerBackBtn = defaultPagePath + 'backbtnPage.html';
+    var pageRefSuccess = defaultPagePath + 'success.html';
+
+    var jsonToBeSend = new Object();
+
+    jsonToBeSend["processId"] = processId;
+    jsonToBeSend["voucherId"] = headerId;
+    jsonToBeSend["employeeId"] = window.localStorage.getItem("EmployeeId");
+
+
+ var expContent = document.getElementById("exceptionMsg").textContent;
+  $( "#exceptionMsg" ).toggle();
+
+ if(expContent == ""){
+    j.ajax({
+        url: window.localStorage.getItem("urlPath") + "FetchExceptionMessages",
+         type: 'POST',
+         dataType: 'json',
+         crossDomain: true,
+         data: JSON.stringify(jsonToBeSend),
+         success: function(data) {
+
+             if (data.Status == "Success") {
+
+                    var entitlementExceeded = data.exceptionMessage;
+
+
+                    $( "#exceptionMsg" ).toggle();
+
+                    var buttonValue = "<div style='border: 1px;background-color: #eeeeee;padding: 10px 0 10px 10px;box-sizing: border-box;width: 100%;'><h5>"+entitlementExceeded+"</h5></div>"
+
+                    j('#exceptionMsg').append(buttonValue);
+                   
+                requestRunning = false;
+
+             } else {
+                 j('#loading_Cat').hide();
+                 successMessage = "Error: Oops something is wrong, Please Contact System Administer";
+                 requestRunning = false;
+             }
+         },
+         error: function(data) {
+            j('#loading_Cat').hide();
+            successMessage = "Error: Oops something is wrong, Please Contact System Administer";
+            requestRunning = false;
+             }
+         });
+
+    }
+}
