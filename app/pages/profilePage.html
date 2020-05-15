@@ -56,15 +56,42 @@
             margin-bottom: 20px;
             color: lightgray;
         }
+
+        #profileContent {
+            display: none;
+        }
+
+        .ripple {
+          background-position: center;
+          transition: background 0.8s;
+        }
+        .ripple:hover {
+            background: #d3dadf radial-gradient(circle, transparent 1%,
+        #e7ebee 1%) center/15000%;
+            background-color: rgb(211, 218, 223);
+            background-size: 15000%;
+        }
+        .ripple:active {
+            background-color: #bdd1d7;
+            background-size: 100%;
+            transition: background 0s;
+        }
+
     </style>
- <div class="container-fluid" style="background-color: white;padding-top: 40px;">
-        <div class="row">
-            <div class="col-md-12" id ="imageBlock" >
-                <img src = "images/profilepic.jpg" id="ProfilePreview" alt="Employee Profile Picture" style="border: 1px solid;border-radius: 50%;margin-left: auto; border-radius: 35px; margin-right: auto;display: block;" height="40%" width="40%">
+<body>
+<div class="container-fluid" style="padding: 25px;border-bottom: 1px solid lightgray;background-color: #2CB2CA;">
+    <div class="row">
+        <div class="col-md-12" id ="imageBlock" >
+            <img src = "images/profilepic.png" id="ProfilePreview" alt="Employee Profile Picture" style="margin-left: auto;margin-right: auto;display: block;border-radius: 50%;" height="40%" width="40%">
+            <div id ="uploadbtn" onclick="on()" > <img src = "images/cameraIcon.png"
+                style="position: absolute;right: 31%;bottom: 0%;width: 10%;height: 35px;border-radius: 50%;">
             </div>
         </div>
-        <div class="container-fluid">
-            <br>
+    </div>
+</div>
+
+ <div class="container-fluid">
+        <div id = "mainContent" class="container-fluid">
             <br>
             <div class="col-md-12" style="border-bottom: 1px solid #ccc;">
                 <h5>First Name</h5>
@@ -81,11 +108,75 @@
                 <label id="userName"></label>
             </div>
         </div>
+
+         <div id="profileContent" onclick="off()" class="container-fluid">
+            <br>
+            <div class="col-md-12 ripple" style="border-bottom: 1px solid #ccc;text-align: center;"  onclick="captureProfilePhoto();">
+               <img src="images/camera.png"  width="15%" height="15%">Take Photo
+            </div>
+            <br>
+            <div class="col-md-12 ripple" style="border-bottom: 1px solid #ccc;text-align: center;" onclick="openGallery(pictureSource.PHOTOLIBRARY);">
+                <img src="images/gallery.png"  width="15%" height="15%">Gallery
+            </div>
+            <br>
+        </div>
     </div>
+
+</body>
     <script type="text/javascript">
         document.getElementById("firstName").innerHTML = window.localStorage.getItem("FirstName");
         document.getElementById("lastName").innerHTML = window.localStorage.getItem("LastName");
         document.getElementById("userName").innerHTML = window.localStorage.getItem("UserName");
         findProfileImagedata();
+
+
+    console.log("asd : "+window.localStorage.getItem("versionNumber") < 12.4);
+    if (window.localStorage.getItem("APPLICATION_VERSION") == false || window.localStorage.getItem("versionNumber") < 12.4) {
+        document.getElementById('uploadbtn').style.display = 'none';
+    }
+
+        function on() {
+          document.getElementById("profileContent").style.display = "block";
+          document.getElementById("mainContent").style.display = "none";
+        }
+
+        function off() {
+          document.getElementById("profileContent").style.display = "none";
+          document.getElementById("mainContent").style.display = "block";
+        }
+
+        function captureProfilePhoto() {
+
+            navigator.camera.getPicture(onProfilePhotoURISuccess, onFail, {
+                quality: 10,
+                destinationType: 0
+            });
+            camerastatus = status;
+
+        }
+
+        function onFail(message) {
+
+        }
+
+        function openGallery(source) {
+        // Retrieve image file location from specified source
+        navigator.camera.getPicture(onProfilePhotoURISuccess, onFail, {
+            quality: 10,
+            destinationType: 0,
+            sourceType: source
+        });
+        camerastatus = status;
+
+    }
+
+    function onProfilePhotoURISuccess(imageData) {
+        document.getElementById("ProfilePreview").src = "data:image/png;base64," + imageData;
+
+    setTimeout(function() {
+        updateProfilePicture(imageData);
+          }, 100);
+        }
+
 
     </script>

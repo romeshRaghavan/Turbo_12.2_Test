@@ -263,7 +263,7 @@ input[type=radio] {
     top: 12px;
     display: block;
     float: none;
-    left: 170px;
+    left: 145px;
     margin: 0;
     padding: 0;
     position: absolute;
@@ -520,8 +520,7 @@ input[type=radio] {
 .expenzingImg {
     position: absolute;
     top: 8px;
-    left: 140px;
-    z-index: 9;
+    left: 115px;
     width: 25px;
 }
 
@@ -653,13 +652,12 @@ a {
 a:focus,
 a:hover {
     color: #23527c;
-    text-decoration: underline
+    text-decoration: none;
 }
 
 a:focus {
     outline: thin dotted;
     outline: 5px auto -webkit-focus-ring-color;
-    outline-offset: -2px
 }
 
 a {
@@ -727,8 +725,7 @@ a:hover {
 }
 
 .topfixednavigate {
-    background-color: #fff;
-    /* border-bottom: 1px solid #999999;*/
+    background-color: #ffff;
     color: #58a7c4;
     height: 40px;
     left: 0;
@@ -745,6 +742,7 @@ a:hover {
 .main-wrapper {
     margin: 0 auto;
     height: 200px;
+    padding-top: 10%;
 }
 
 .startLoginPage {
@@ -758,7 +756,7 @@ a:hover {
 }
 
 .softwarecontent {
-    font-size: 22px;
+    font-size: 20px;
     color: #ffffff;
     text-align: center;
     margin-top: 10px;
@@ -780,7 +778,7 @@ a:hover {
     background-image: url("../images/expenzing-logo.png");
     background-repeat: no-repeat;
     background-position: center;
-    height: 85px;
+    height: 90px;
 }
 
 body {
@@ -1025,7 +1023,7 @@ div.image {
 .accordions {
     padding-bottom: 40px;
     background-color: #fff;
-    padding-top: 20px;
+  /*  padding-top: 20px;*/
 }
 
 .languagebar {
@@ -1097,8 +1095,8 @@ div.image {
 .modal-content {
     position: relative;
     outline: 0;
-    background: url(../images/background-expense.jpg);
-    background-repeat: no-repeat;
+   /* background: url(../images/background-expense.jpg);*/
+  /*  background-repeat: no-repeat;*/
     border: none;
     background-position: 0 -50px;
     -webkit-box-shadow: none;
@@ -1204,6 +1202,17 @@ div.image {
     border-color: #f4f4f4;;
 }
 
+.threebtn4 {
+    width: 33.3%;
+    font-size: 12px;
+    border-radius: 0;
+    border: 1px solid #ccc;
+    float: left;
+    background-color: #337ab7;
+    border-color: #f4f4f4;;
+}
+
+
 .dropdown-menu {
     position: absolute;
     left: auto;
@@ -1216,7 +1225,7 @@ div.image {
 }
 
 .selectionSubmitTSBtns {
-    width: 50%;
+    width: 33.33%;
     font-size: 13px;
     background-color: #337ab7;
     border-color: #2e6da4;
@@ -1240,8 +1249,12 @@ div.image {
 }
 
 .row {
-    margin-right: -15px;
-    margin-left: -15px;
+    margin-right: -10px;
+    margin-left: -10px;
+}
+
+.table-responsive {
+    overflow-x: hidden;
 }
 
 .advAmount {
@@ -1274,4 +1287,19 @@ div.image {
     font-weight: bold;
     border: none;
 
+}
+
+#grad1 {
+    background-color: #2CB2CA;
+}
+
+.selectionSubmitTSBtnsWithoutSend {
+    width: 50%;
+    font-size: 13px;
+    background-color: #337ab7;
+    border-color: #2e6da4;
+    border-radius: 0;
+    float: left;
+    padding: 10px 0;
+    border: 1px solid #ccc;
 }

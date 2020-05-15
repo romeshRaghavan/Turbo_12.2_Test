@@ -37,8 +37,50 @@
                                         <li>
                                             <input lang="en" placeholder="Account Head" id="accountHead" type="text" style="width: 98%">
                                         </li>
+                                        <!-- <table>
+                                            <tr>
+                                                <TD class="clsLabel" id="monthLabel" style="display:none">
+                                                    Select Month:
+                                                </TD>
+                                                <TD>
+                                                 <select  name="voucherMonth" style="display:none" id ="showHideDropDown" onchange="populateStartEndDate(showHideDropDown);">
+                                                    <option value="">-- None --</option>
+                                                    <option value="January">January</option>
+                                                    <option value="February">February</option>
+                                                    <option value="March">March</option>
+                                                    <option value="April">April</option>
+                                                    <option value="May">May</option>
+                                                    <option value="June">June</option>
+                                                    <option value="July">July</option>
+                                                    <option value="August">August</option>
+                                                    <option value="September">September</option>
+                                                    <option value="October">October</option>
+                                                    <option value="November">November</option>
+                                                    <option value="December">December</option>
+                                                </select>
+                                            </TD>
+                                        </tr>
+                                       </table> -->
+                                       <li style="width: 50%;">
+                                            <label id="monthLabel" style="display:none"> <font lang="en" face="verdana" size="0.8" color="green">Select Month:</font></label>
+                                             <select  name="voucherMonth" style="display:none" id ="showHideDropDown" onchange="populateStartEndDate(showHideDropDown);">
+                                                    <option value="">-- None --</option>
+                                                    <option value="January">January</option>
+                                                    <option value="February">February</option>
+                                                    <option value="March">March</option>
+                                                    <option value="April">April</option>
+                                                    <option value="May">May</option>
+                                                    <option value="June">June</option>
+                                                    <option value="July">July</option>
+                                                    <option value="August">August</option>
+                                                    <option value="September">September</option>
+                                                    <option value="October">October</option>
+                                                    <option value="November">November</option>
+                                                    <option value="December">December</option>
+                                                </select>
+                                        </li>
                                         <li>
-                                            <input lang="en" placeholder="Expense Name" id="expenseName" style="width: 98%">
+                                            <input lang="en" placeholder="Expense Name" id="expenseName" type="text" style="width: 98%">
                                         </li>
                                         <li>
                                             <input lang="en" id="ratePerUnit" type="hidden">
@@ -46,7 +88,7 @@
 
                                         <li>
 
-                                            <input lang="en" id="expFromLoc" type="text" style="width: 49%" placeholder="From Location" onkeyup="attachQueryValues(1)" onchange="resetUnit();" onblur="setNarration();resetUnit();">
+                                            <input lang="en" id="expFromLoc" type="text" style="width: 49%" placeholder="From Location" onkeyup="attachQueryValues(1);resetUnit();" onchange="resetUnit();" onblur="setNarration();">
                                             <div id="json-datalist" class="dropdown-content" style="display:none;">
 
                                             </div>
@@ -58,16 +100,26 @@
                                         <li>
                                             <input lang="en" id="expNarration" type="text" placeholder="Enter Expense Narration">
                                         </li>
-
+                                         <li style="width: 50%;">
+                                            <font lang="en" face="verdana" size="0.8" color="green">Select Paid By:</font>
+                                             <select  name="paymentMode" id ="paidByValue">
+                                                <option value="">-- None --</option>
+                                                <option value="1">Cash</option>
+                                            </select>
+                                        </li>
+                                        <li>
+                                            <div class="row">
+                                                <div class="col-md-12">
+                                                 <input lang="en" id="vendorName" style="width:48%;" type="text" placeholder="Enter Vendor Name">&nbsp;
+                                                  <input lang="en" id="invoiceNo" style="width:48%;" type="text" placeholder="Enter Invoice Number">
+                                                </div>
+                                            </div>
+                                        </li>
                                         <li>
                                             <p><font lang="en" face="verdana" size="1" color="green">Unit is no. of persons/Kms/meals etc.</font></p>
                                             <input lang="en" id="expUnit" type="tel" style="width: 22%" placeholder="Units" onkeyup="calculatePerUnit();">
                                             <input id="wayPointunitValue" value="" readonly="readonly" type="hidden">
-
-
-                                            <input lang="en" id="expAmt" type="text" style="width: 38%" placeholder="Amount" onkeyup="validate(); checkPerUnitExceptionStatusForBEAtLineLevel();checkAmount();">
-
-
+                                            <input lang="en" id="expAmt" type="tel" style="width: 38%" placeholder="Amount" onkeyup="validate(); checkPerUnitExceptionStatusForBEAtLineLevel();checkAmount();">
                                             <input id="currency" type="hidden" style="width: 33%">
                                             <p id="errorMsgArea"><span id="errorSpan"></span></p>
                                         </li>
@@ -103,9 +155,9 @@
                             </div>
                         </div>
                         <script>
-
                             hideEAIcons();
-                            var currentMonth;
+                            delayMstForBE();
+                            /*var currentMonth;
                             var currentDate;
                             var currentYear;
                             $(function() {
@@ -124,9 +176,12 @@
                             if (currentMonth < 10) {
                                 currentMonth = '0' + currentMonth
                             }
-                            document.getElementById("expDate").value = currentMonth + "/" + currentDate + "/" + currentYear;
+                            document.getElementById("expDate").value = currentMonth + "/" + currentDate + "/" + currentYear;*/
                             j("#accountHead").change(function() {
                                 getExpenseNamesBasedOnAccountHead();
+                                document.getElementById('showHideDropDown').value = "";
+                                $('#expDate').datepicker('destroy');
+                                delayMstForBE();
                             });
                             j("#expenseName").change(function() {
                                 getPerUnitBasedOnExpense();

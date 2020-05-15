@@ -70,8 +70,7 @@ from {
    
     .w3-sidebar {
         height: 100%;
-        width: 250px;
-        background-color: #f2f2f2;
+        background-color: #fffdfd;
         position: fixed!important;
         overflow: auto;
     }
@@ -83,7 +82,7 @@ from {
     .w3-bar-block .w3-bar-item {
         width: 100%;
         display: block;
-        padding: 17px 15px;
+        padding: 15px 15px;
         text-align: left;
         border: none;
         white-space: normal;
@@ -145,29 +144,32 @@ from {
     </center>
 
     <!-- Sidebar -->
-    <div class="w3-sidebar w3-bar-block w3-animate-left" style="display:none;z-index:40" id="mySidebar">
+    <div class="w3-sidebar w3-bar-block w3-animate-left" style="display:none; z-index:40" id="mySidebar">
    
-        <button class="w3-bar-item w3-button w3-large" onclick="w3_close()" style="font-size: 20px;border-bottom: 1px solid lightgrey;background-color: #0f97b2;">
-        <div class="">
-        <img src="images/profilepic.jpg" id = "sideNavProfilePreview"  style="border-radius:65px;width: 20%;display: block;"></div>
+        <button class="w3-bar-item w3-button w3-large" onclick="w3_close()" id="grad1">
+        <div style="text-align: center;">
+            <img src="images/profilepic.png" id = "sideNavProfilePreview"  style="border-radius:50%; width: 35%;
+                margin-bottom: 10px; margin-top: 10px;">
+            <label id="empName" style="color: aliceblue; display: block;"></label>
+        </div>
         <br>
-        <label id="empName" class=""></label>
+        <label id="empName"  style="color: aliceblue;" class=""></label>
         </button>
         <a href="#" class="w3-bar-item w3-button" onclick="showProfile()"><i class="fa fa-user-circle-o"></i>
-            <label style="margin-left:15px;">Profile</label>
+            <label lang = "en" style="margin-left:15px;">Profile</label>
         </a>
 
         <a href="#" class="w3-bar-item w3-button" onclick="showSyncMaster()"><i class="fa fa-skyatlas"></i>
-            <label style="margin-left:10px;">Sync Masters</label>
+            <label lang = "en" style="margin-left:10px;">Sync Masters</label>
         </a>
         <a href="#" class="w3-bar-item w3-button" onclick="showMultiLanguag()" id='multiLang'><i class="fa fa-cogs"></i>
-            <label style="margin-left:15px;">Languages</label>
+            <label lang = "en" style="margin-left:15px;">Languages</label>
         </a>
         <a href="#" class="w3-bar-item w3-button" onclick="showAboutPage()" ><i class="fa fa-info-circle"></i>
-            <label style="margin-left:15px;">About</label>
+            <label lang = "en" style="margin-left:15px;">About</label>
         </a>
         <a href="#" class="w3-bar-item w3-button" onclick="logOut()"><i class="fa fa-sign-out" aria-hidden="true"></i>
-        <label style="margin-left:15px;">Log Out</label></a>
+        <label lang = "en" style="margin-left:15px;">Log Out</label></a>
     </div>
 
 
