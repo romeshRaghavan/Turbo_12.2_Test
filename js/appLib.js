@@ -883,7 +883,7 @@ function fetchDelayMstResultForBE(transaction, results) {
                                  var acc_head_id = stateArr.Value;
                                  var acc_head_name = stateArr.Label;
                                  var is_monthly_restricted = 'N';
-                                 if(acc_head_id == '2'){
+                                 if(acc_head_id == '32'){
                                         is_monthly_restricted = 'Y';
                                  }
 
