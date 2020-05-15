@@ -4753,7 +4753,8 @@ function fetchViewForSettelmentApproverVouchersHeader() {
                          var data =
                              "<div class='col-md-12' onclick='fetchViewForSettelmentDetails(" + row.headerId + ");'>" 
                                 + "<div class='card shadow'>" 
-                                    + "<div class='card-header' style='font-size: 15px;color: #076473;'>" 
+                                    + "<div class='card-header' style='font-size: 15px;color: #076473;'>"
+                                     + "<span style='display: inline;' id = 'isEntitlementExceededTS_"+record+"'></span>"
                                          + row.voucherNumber 
                                             +"<h7 style='display: inline;'>&nbsp("+defaultCurrency+")</h7>"
                              + "<label style = 'color:darkorange;float: right;'>" + statusForEdit + "</label></div>" 
@@ -4790,7 +4791,7 @@ function fetchViewForSettelmentApproverVouchersHeader() {
                                 var buttonValue =
                                     "<i style='font-size: 12px;color: red;float: left;margin-top: 5px;' class='fa fa-circle'></i>" + "&nbsp;";
 
-                                j('#isEntitlementExceeded_' + record).append(buttonValue);
+                                j('#isEntitlementExceededTS_' + record).append(buttonValue);
 
                             }
 
