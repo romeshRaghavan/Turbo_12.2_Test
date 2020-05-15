@@ -1364,6 +1364,7 @@ function getCurrencyOnRequestNoChange() {
 
 function getExpenseNamesBasedOnAccountHead() {
     var accountHeadID = j("#accountHead").select2('data').id;
+    showHideMonthlyRestrictedDropDown(accountHeadID);
     getExpenseNamesfromDB(accountHeadID);
 }
 
