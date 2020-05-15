@@ -160,7 +160,7 @@ function arrayRemove(arr, value) {
      mydb.transaction(function(t) {
          //t.executeSql("CREATE TABLE IF NOT EXISTS employeeDetails (id INTEGER PRIMARY KEY ASC, firstName TEXT, lastName TEXT, gradeId INTEGER, budgetingStatus CHAR(1),unitId INTEGER, status TEXT)");
          t.executeSql("CREATE TABLE IF NOT EXISTS currencyMst (currencyId INTEGER PRIMARY KEY ASC, currencyName TEXT)");
-         t.executeSql("CREATE TABLE IF NOT EXISTS accountHeadMst (accountHeadId INTEGER PRIMARY KEY ASC, accHeadName TEXT)");
+         t.executeSql("CREATE TABLE IF NOT EXISTS accountHeadMst (accountHeadId INTEGER PRIMARY KEY ASC, accHeadName TEXT, isMonthlyRestricted CHAR(1))");
          t.executeSql("CREATE TABLE IF NOT EXISTS expNameMst (id INTEGER PRIMARY KEY ASC,expNameMstId INTEGER, expName TEXT, expIsFromToReq CHAR(1),accCodeId INTEGER NOT NULL,accHeadId INTEGER NOT NULL,  expIsUnitReq CHAR(1),expRatePerUnit Double, expFixedOrVariable CHAR(1), expFixedLimitAmt Double,expPerUnitActiveInative CHAR(1),isErReqd CHAR(1),limitAmountForER Double,isAttachmentReq CHAR(1),isEntiLineOrVoucherLevel CHAR(1),periodicity TEXT,isUnitPeriodic TEXT)");
          t.executeSql("CREATE TABLE IF NOT EXISTS businessExpDetails (busExpId INTEGER PRIMARY KEY ASC, accHeadId INTEGER REFERENCES accountHeadMst(accHeadId), expNameId INTEGER REFERENCES expNameMst(expNameId),expDate DATE, expFromLoc TEXT, expToLoc TEXT, expNarration TEXT, expUnit INTEGER, expAmt Double, currencyId INTEGER REFERENCES currencyMst(currencyId),isEntitlementExceeded TEXT,busExpAttachment BLOB,wayPointunitValue TEXT)");
          t.executeSql("CREATE TABLE IF NOT EXISTS walletMst (walletId INTEGER PRIMARY KEY ASC AUTOINCREMENT, walletAttachment  BLOB)");
@@ -882,7 +882,12 @@ function fetchDelayMstResultForBE(transaction, results) {
                                  stateArr = accountHeadArray[i];
                                  var acc_head_id = stateArr.Value;
                                  var acc_head_name = stateArr.Label;
-                                 t.executeSql("INSERT INTO accountHeadMst (accountHeadId,accHeadName) VALUES (?, ?)", [acc_head_id, acc_head_name]);
+                                 var is_monthly_restricted = 'N';
+                                 if(acc_head_id == '2'){
+                                        is_monthly_restricted = 'Y';
+                                 }
+
+                                 t.executeSql("INSERT INTO accountHeadMst (accountHeadId,accHeadName,isMonthlyRestricted) VALUES (?, ?, ?)", [acc_head_id, acc_head_name, is_monthly_restricted]);
 
                              }
                          }
@@ -7858,5 +7863,31 @@ function fetchException(headerId,processId){
              }
          });
 
+    }
+}
+
+function showHideMonthlyRestrictedDropDown(accountHeadId) {
+    j('#errorMsgArea').children('span').text("");
+    if (mydb) {
+         //Get all the employeeDetails from the database with a select statement, set outputEmployeeDetails as the callback function for the executeSql command
+         mydb.transaction(function(t) {
+             t.executeSql("SELECT * FROM accountHeadMst where accountHeadId=" + accountHeadId, [], getAccountHeadData);
+         });
+     } else {
+         alert(window.lang.translate('Database not found, your browser does not support web sql!'));
+     }
+ }
+
+ function getAccountHeadData(transaction, results) {
+    if (results != null) {
+        var row = results.rows.item(0);
+        var result = row.isMonthlyRestricted;
+        if(result == 'Y'){
+            document.getElementById('showHideDropDown').style.display = "block";
+            document.getElementById('monthLabel').style.display = "";
+        }else{
+            document.getElementById('showHideDropDown').style.display = "none";
+            document.getElementById('monthLabel').style.display = "none";
+        }
     }
 }
